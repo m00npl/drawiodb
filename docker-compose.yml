@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  drawio-backend:
+    image: moonplkr/drawio-golem-backend:latest
+    container_name: drawio-golem-backend
+    ports:
+      - "8899:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - moon_golem_network
+
+  drawio-app:
+    image: moonplkr/drawio-simple:latest
+    container_name: drawio-app
+    ports:
+      - "8900:8080"
+    restart: unless-stopped
+    networks:
+      - moon_golem_network
+    depends_on:
+      - drawio-backend
+
+networks:
+  moon_golem_network:
+    external: true

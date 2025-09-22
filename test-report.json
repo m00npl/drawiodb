@@ -1,0 +1,101 @@
+{
+  "testSuite": "DrawIO Golem DB Plugin Comprehensive Test",
+  "timestamp": "2025-09-19T21:07:23.403Z",
+  "totalTests": 10,
+  "passed": 6,
+  "failed": 4,
+  "skipped": 0,
+  "testResults": [
+    {
+      "name": "Page Load",
+      "status": "PASSED",
+      "duration": "6431ms",
+      "error": null
+    },
+    {
+      "name": "Golem Plugin Load",
+      "status": "FAILED",
+      "duration": "25092ms",
+      "error": "Plugin functions not loaded after 10 attempts: {\"openWebManager\":false,\"saveToGolemDB\":true,\"showGolemConfig\":false}"
+    },
+    {
+      "name": "Menu Integration",
+      "status": "PASSED",
+      "duration": "126288ms",
+      "error": null
+    },
+    {
+      "name": "Configuration Dialog",
+      "status": "FAILED",
+      "duration": "3ms",
+      "error": "Failed to open config: showGolemConfig function not found"
+    },
+    {
+      "name": "File Manager Dialog",
+      "status": "FAILED",
+      "duration": "2ms",
+      "error": "Failed to open file manager: openWebManager function not found"
+    },
+    {
+      "name": "Drawing Functionality",
+      "status": "FAILED",
+      "duration": "2014ms",
+      "error": "Drawing functionality failed: Editor UI not initialized yet"
+    },
+    {
+      "name": "Save Dialog",
+      "status": "PASSED",
+      "duration": "7ms",
+      "error": null
+    },
+    {
+      "name": "Backend Connectivity",
+      "status": "PASSED",
+      "duration": "166ms",
+      "error": null
+    },
+    {
+      "name": "CSP Compliance",
+      "status": "PASSED",
+      "duration": "4ms",
+      "error": null
+    },
+    {
+      "name": "JavaScript Errors Check",
+      "status": "PASSED",
+      "duration": "2ms",
+      "error": null
+    }
+  ],
+  "issues": [
+    {
+      "test": "Golem Plugin Load",
+      "issue": "Plugin functions not loaded after 10 attempts: {\"openWebManager\":false,\"saveToGolemDB\":true,\"showGolemConfig\":false}",
+      "severity": "HIGH"
+    },
+    {
+      "test": "Configuration Dialog",
+      "issue": "Failed to open config: showGolemConfig function not found",
+      "severity": "HIGH"
+    },
+    {
+      "test": "File Manager Dialog",
+      "issue": "Failed to open file manager: openWebManager function not found",
+      "severity": "HIGH"
+    },
+    {
+      "test": "Drawing Functionality",
+      "issue": "Drawing functionality failed: Editor UI not initialized yet",
+      "severity": "HIGH"
+    }
+  ],
+  "recommendations": [
+    "Fix failing tests to improve stability",
+    "Address identified issues to improve user experience",
+    "Improve test coverage and fix critical issues"
+  ],
+  "summary": {
+    "successRate": "60.0%",
+    "status": "CRITICAL"
+  }
+}

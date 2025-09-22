@@ -1,0 +1,17 @@
+{
+  "name": "drawio-comprehensive-test",
+  "version": "1.0.0",
+  "description": "Comprehensive test suite for DrawIO Golem DB plugin",
+  "main": "comprehensive-test.js",
+  "scripts": {
+    "test": "node comprehensive-test.js",
+    "test:headless": "HEADLESS=true node comprehensive-test.js"
+  },
+  "dependencies": {
+    "selenium-webdriver": "^4.15.0"
+  },
+  "devDependencies": {},
+  "keywords": ["drawio", "golem", "selenium", "testing"],
+  "author": "Claude Code",
+  "license": "MIT"
+}
