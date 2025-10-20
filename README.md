@@ -1,6 +1,6 @@
 # DrawIO DB - Decentralized Diagram Editor
 
-A decentralized diagram editor built on DrawIO with Golem DB blockchain storage integration. Store your diagrams permanently on the blockchain with cryptographic security.
+A decentralized diagram editor built on DrawIO with Arkiv blockchain storage integration. Store your diagrams permanently on the blockchain with cryptographic security.
 
 ## 🌐 Live Demo
 
@@ -8,7 +8,7 @@ A decentralized diagram editor built on DrawIO with Golem DB blockchain storage 
 
 ## ✨ Features
 
-- **Blockchain Storage**: Store diagrams permanently on Golem DB blockchain
+- **Blockchain Storage**: Store diagrams permanently on Arkiv blockchain
 - **DrawIO Integration**: Full-featured diagram editor with all DrawIO capabilities
 - **Multiple Authentication**: Support for MetaMask wallet, custodial accounts, and guest mode
 - **Decentralized**: No central server required for diagram storage
@@ -38,7 +38,7 @@ cp .env.example .env
 
 3. Configure your environment variables in `.env`:
 ```env
-# Golem DB Configuration (Kaolin Testnet)
+# Arkiv Configuration (Kaolin Testnet)
 GOLEM_CHAIN_ID=60138453025
 GOLEM_PRIVATE_KEY=your_private_key_here
 GOLEM_RPC_URL=https://kaolin.holesky.golemdb.io/rpc
@@ -128,10 +128,10 @@ server {
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `GOLEM_CHAIN_ID` | Golem DB chain ID | Yes | `60138453025` |
+| `GOLEM_CHAIN_ID` | Arkiv chain ID | Yes | `60138453025` |
 | `GOLEM_PRIVATE_KEY` | Your funded private key | No* | - |
-| `GOLEM_RPC_URL` | Golem DB RPC endpoint | Yes | - |
-| `GOLEM_WS_URL` | Golem DB WebSocket endpoint | Yes | - |
+| `GOLEM_RPC_URL` | Arkiv RPC endpoint | Yes | - |
+| `GOLEM_WS_URL` | Arkiv WebSocket endpoint | Yes | - |
 | `PORT` | Server port | No | `3000` |
 | `NODE_ENV` | Environment mode | No | `development` |
 
@@ -142,7 +142,7 @@ server {
 The application consists of two main services:
 
 - **drawio-app**: Frontend application serving the DrawIO interface
-- **drawio-backend**: Backend API handling Golem DB operations
+- **drawio-backend**: Backend API handling Arkiv operations
 
 Both services communicate through a shared Docker network.
 
@@ -150,16 +150,16 @@ Both services communicate through a shared Docker network.
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   DrawIO UI     │───▶│   Backend API    │───▶│   Golem DB      │
+│   DrawIO UI     │───▶│   Backend API    │───▶│   Arkiv      │
 │   (Frontend)    │    │   (Node.js)      │    │   (Blockchain)  │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
 ### Key Components
 
-- **Frontend**: Modified DrawIO with Golem DB plugin integration
+- **Frontend**: Modified DrawIO with Arkiv plugin integration
 - **Backend**: Hono.js API server handling blockchain operations
-- **Storage**: Golem DB blockchain for permanent diagram storage
+- **Storage**: Arkiv blockchain for permanent diagram storage
 - **Authentication**: MetaMask, custodial, or guest mode options
 
 ## 🛠️ Development
@@ -211,11 +211,11 @@ bun run test:ui
 1. **Open DrawIO DB**: Navigate to your deployment URL
 2. **Choose Authentication**: Select wallet, custodial, or guest mode
 3. **Create Diagram**: Use the full DrawIO interface to create your diagram
-4. **Save to Blockchain**: Use "File → Save to Golem DB" to store permanently
+4. **Save to Blockchain**: Use "File → Save to Arkiv" to store permanently
 
 ### Managing Diagrams
 
-- **Load from Blockchain**: Use "File → Open from Golem DB"
+- **Load from Blockchain**: Use "File → Open from Arkiv"
 - **Share Diagrams**: Generate shareable links for public diagrams
 - **Export Options**: Export to various formats (PNG, JPG, SVG, PDF)
 
@@ -249,7 +249,7 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) file for 
 ## 🔗 Links
 
 - **Live Demo**: [https://drawiodb.online](https://drawiodb.online)
-- **Golem DB**: [https://golemdb.io](https://golemdb.io)
+- **Arkiv**: [https://golemdb.io](https://golemdb.io)
 - **DrawIO**: [https://drawio.com](https://drawio.com)
 
 ---

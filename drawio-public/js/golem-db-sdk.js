@@ -1,7 +1,7 @@
 /**
- * Custom Lightweight Golem DB SDK
+ * Custom Lightweight Arkiv SDK
  *
- * A simple, reliable SDK for Golem DB operations using direct JSON-RPC calls
+ * A simple, reliable SDK for Arkiv operations using direct JSON-RPC calls
  * Avoids the issues with the official SDK and provides clean CRUD operations
  */
 
@@ -86,14 +86,14 @@ class GolemDB {
     }
 
     /**
-     * Create a new entity in Golem DB
+     * Create a new entity in Arkiv
      */
     async createEntity(data, annotations = {}, btl = null) {
         if (!this.signer) {
             throw new Error('Not connected. Call connect() first.');
         }
 
-        console.log('📦 Creating entity in Golem DB...');
+        console.log('📦 Creating entity in Arkiv...');
 
         // Prepare data
         const entityData = typeof data === 'string' ?
@@ -141,7 +141,7 @@ class GolemDB {
     }
 
     /**
-     * Query entities from Golem DB
+     * Query entities from Arkiv
      */
     async queryEntities(query = {}) {
         console.log('🔍 Querying entities:', query);

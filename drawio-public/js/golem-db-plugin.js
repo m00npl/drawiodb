@@ -1,5 +1,5 @@
 /**
- * Golem DB Plugin for Draw.io (Built-in Version)
+ * Arkiv Plugin for Draw.io (Built-in Version)
  * Pre-configured for drawiodb.online backend
  * With MetaMask Authentication and Encryption Support
  */
@@ -8,7 +8,7 @@
 
     // Cache busting - force reload when plugin changes
     const PLUGIN_VERSION = Date.now();
-    console.log(`🔄 Golem DB Plugin v${PLUGIN_VERSION} loading...`);
+    console.log(`🔄 Arkiv Plugin v${PLUGIN_VERSION} loading...`);
 
     // Library loading system with cache busting
     const LIBRARIES = {
@@ -95,7 +95,7 @@
 
     console.log('🔥🔥🔥 GOLEM DB PLUGIN SCRIPT LOADED!');
 
-    console.log('🔥 Initializing Built-in Golem DB Plugin with MetaMask Auth...');
+    console.log('🔥 Initializing Built-in Arkiv Plugin with MetaMask Auth...');
     console.log('🌐 Backend URL:', BACKEND_URL);
 
     // MetaMask faux error detection (from dPaste example)
@@ -119,7 +119,7 @@
     }
 
     waitForDrawIO(function() {
-        console.log('✅ Draw.io ready, loading Golem DB plugin...');
+        console.log('✅ Draw.io ready, loading Arkiv plugin...');
 
         // Check for diagram parameter in URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -131,7 +131,7 @@
 
         // Load the plugin
         Draw.loadPlugin(function(ui) {
-            console.log('🎯 Golem DB Plugin UI context loaded');
+            console.log('🎯 Arkiv Plugin UI context loaded');
 
             // ===== MODAL SYSTEM =====
             function createModal(title, message, buttons = [{ text: 'OK', style: 'primary' }]) {
@@ -519,7 +519,7 @@
                 return false;
             }
 
-            // Initialize our custom Golem DB SDK
+            // Initialize our custom Arkiv SDK
             let golemDB = null;
 
             async function initGolemDB() {
@@ -529,7 +529,7 @@
                         chainId: 0xE0087F821
                     });
                     await golemDB.connect();
-                    console.log('🔗 Custom Golem DB SDK initialized');
+                    console.log('🔗 Custom Arkiv SDK initialized');
                 }
                 return golemDB;
             }
@@ -537,7 +537,7 @@
             // Save diagram using our custom SDK
             async function saveToGolemDBViaSdk(xmlString, diagramId, title, author, encrypted = false) {
                 try {
-                    console.log(`📦 Saving diagram via custom Golem DB SDK (${Math.round(xmlString.length/1024)}KB)`);
+                    console.log(`📦 Saving diagram via custom Arkiv SDK (${Math.round(xmlString.length/1024)}KB)`);
 
                     const db = await initGolemDB();
 
@@ -595,7 +595,7 @@
                         throw new Error('Golem SDK not initialized');
                     }
 
-                    console.log(`📥 Loading diagram ${diagramId} from Golem DB via SDK...`);
+                    console.log(`📥 Loading diagram ${diagramId} from Arkiv via SDK...`);
 
                     // Use entity key directly (diagramId is the entity key)
                     try {
@@ -632,7 +632,7 @@
                         throw new Error('Golem SDK not initialized');
                     }
 
-                    console.log('📋 Listing diagrams from Golem DB via SDK...');
+                    console.log('📋 Listing diagrams from Arkiv via SDK...');
 
                     // SDK doesn't have query API for listing - use backend instead
                     throw new Error('Listing via SDK not supported - use backend mode');
@@ -692,14 +692,14 @@
             // Initialize MetaMask connection
             async function connectWallet() {
                 if (typeof window.ethereum === 'undefined') {
-                    await showAlert('❌ MetaMask Required', 'MetaMask is not installed. Please install MetaMask extension to use Golem DB features.\n\nVisit: https://metamask.io');
+                    await showAlert('❌ MetaMask Required', 'MetaMask is not installed. Please install MetaMask extension to use Arkiv features.\n\nVisit: https://metamask.io');
                     return false;
                 }
 
                 // Load required libraries first
                 const librariesLoaded = await loadAllLibraries();
                 if (!librariesLoaded) {
-                    await showAlert('❌ Libraries Failed', 'Failed to load required libraries for Golem DB integration.');
+                    await showAlert('❌ Libraries Failed', 'Failed to load required libraries for Arkiv integration.');
                     return false;
                 }
 
@@ -724,14 +724,14 @@
                     // Check backend connectivity
                     const backendHealthy = await checkBackendHealth();
                     if (!backendHealthy) {
-                        await showAlert('⚠️ Backend Offline', `Backend server (${BACKEND_URL}) appears to be offline.\n\nWallet connected but Golem DB features may not work.`);
+                        await showAlert('⚠️ Backend Offline', `Backend server (${BACKEND_URL}) appears to be offline.\n\nWallet connected but Arkiv features may not work.`);
                     }
 
                     // Załaduj konfigurację użytkownika i balance
                     await loadUserConfig();
                     await updateEthBalance();
 
-                    await showAlert('✅ Wallet Connected', `Address: ${walletAddress}\n\nYou can now save and load diagrams from Golem DB.`);
+                    await showAlert('✅ Wallet Connected', `Address: ${walletAddress}\n\nYou can now save and load diagrams from Arkiv.`);
                     return true;
                 } catch (error) {
                     console.error('❌ Error connecting wallet:', error);
@@ -752,7 +752,7 @@
             async function disconnectWallet() {
                 walletConnected = false;
                 walletAddress = null;
-                await showAlert('🔓 Wallet Disconnected', 'You can no longer save/load from Golem DB until reconnected.');
+                await showAlert('🔓 Wallet Disconnected', 'You can no longer save/load from Arkiv until reconnected.');
             }
 
             // User configuration state
@@ -795,8 +795,8 @@
                 }
             }
 
-            // Golem DB constants
-            const GOLEM_DB_MAX_SIZE = 128 * 1024; // 128KB Golem DB entity limit
+            // Arkiv constants
+            const GOLEM_DB_MAX_SIZE = 128 * 1024; // 128KB Arkiv entity limit
             const CHUNK_SIZE = 100 * 1024; // 100KB chunks for safety margin
             const MAX_TOTAL_SIZE = 10 * 1024 * 1024; // 10MB total document limit
 
@@ -809,7 +809,7 @@
                 return true;
             }
 
-            // Split document into chunks for Golem DB storage
+            // Split document into chunks for Arkiv storage
             function createDocumentChunks(xmlString, diagramId, title, author) {
                 const encoder = new TextEncoder();
                 const xmlBytes = encoder.encode(xmlString);
@@ -941,7 +941,7 @@
             // Check wallet connection
             async function checkWallet() {
                 if (!walletConnected) {
-                    const shouldConnect = await showConfirm('🔐 Wallet Required', 'You need to connect your MetaMask wallet to save/load diagrams from Golem DB.\n\nConnect now?');
+                    const shouldConnect = await showConfirm('🔐 Wallet Required', 'You need to connect your MetaMask wallet to save/load diagrams from Arkiv.\n\nConnect now?');
                     if (!shouldConnect) return false;
 
                     const connected = await connectWallet();
@@ -950,7 +950,7 @@
                 return true;
             }
 
-            // Save current diagram to Golem DB with sharding support
+            // Save current diagram to Arkiv with sharding support
             const saveToGolemDB = withOperationLock(async function() {
                 try {
                     if (!(await checkWallet())) return;
@@ -1013,7 +1013,7 @@
                         if (sdkAvailable) {
                             console.log('🚀 Using SDK mode with dPaste configuration');
                             const result = await saveToGolemDBViaSdk(xmlString, diagramId, title.trim(), walletAddress, encryptThisDiagram);
-                            await showAlert('✅ Diagram Saved', `Diagram saved directly to Golem DB!\n\nDiagram ID: ${result.diagramId}\nMode: Direct SDK\nEntity Key: ${result.entityKey?.substring(0, 16)}...`);
+                            await showAlert('✅ Diagram Saved', `Diagram saved directly to Arkiv!\n\nDiagram ID: ${result.diagramId}\nMode: Direct SDK\nEntity Key: ${result.entityKey?.substring(0, 16)}...`);
                             return;
                         }
                     } catch (sdkError) {
@@ -1059,7 +1059,7 @@
                     saveData.encryptionPassword = encryptionPassword;
                 }
 
-                ui.spinner.spin(document.body, 'Saving to Golem DB...');
+                ui.spinner.spin(document.body, 'Saving to Arkiv...');
 
                 const response = await fetchWithTimeout(`${BACKEND_URL}/api/diagrams/export`, {
                     method: 'POST',
@@ -1078,7 +1078,7 @@
                 ui.spinner.stop();
 
                 if (result.success) {
-                    await showAlert('✅ Diagram Saved', `Diagram saved to Golem DB!\n\nDiagram ID: ${result.diagramId}`);
+                    await showAlert('✅ Diagram Saved', `Diagram saved to Arkiv!\n\nDiagram ID: ${result.diagramId}`);
                 } else {
                     throw new Error(result.error || 'Save failed');
                 }
@@ -1088,7 +1088,7 @@
             async function saveShardedDocument(xmlString, diagramId, title, author, encrypted = false, encryptionPassword = null) {
                 const chunks = createDocumentChunks(xmlString, diagramId, title, author);
 
-                ui.spinner.spin(document.body, `Saving ${chunks.length} chunks to Golem DB...`);
+                ui.spinner.spin(document.body, `Saving ${chunks.length} chunks to Arkiv...`);
 
                 console.log(`💾 Saving ${chunks.length} chunks for diagram ${diagramId}`);
 
@@ -1099,7 +1099,7 @@
                         const chunk = chunks[i];
 
                         // Update progress
-                        ui.spinner.spin(document.body, `Saving chunk ${i + 1}/${chunks.length} to Golem DB...`);
+                        ui.spinner.spin(document.body, `Saving chunk ${i + 1}/${chunks.length} to Arkiv...`);
 
                         const chunkData = {
                             chunkId: chunk.chunkId,
@@ -1142,7 +1142,7 @@
 
                     ui.spinner.stop();
 
-                    await showAlert('✅ Large Diagram Saved', `Large diagram saved to Golem DB!\n\nDiagram ID: ${diagramId}\nChunks: ${chunks.length}\nTotal size: ${Math.round(new Blob([xmlString]).size/1024)}KB`);
+                    await showAlert('✅ Large Diagram Saved', `Large diagram saved to Arkiv!\n\nDiagram ID: ${diagramId}\nChunks: ${chunks.length}\nTotal size: ${Math.round(new Blob([xmlString]).size/1024)}KB`);
 
                 } catch (error) {
                     ui.spinner.stop();
@@ -1486,7 +1486,7 @@
                     }
 
                     if (!result.data || result.data.length === 0) {
-                        await showAlert('📂 No Diagrams Found', 'No saved diagrams found.\n\nSave a diagram first using "Save to Golem DB"!');
+                        await showAlert('📂 No Diagrams Found', 'No saved diagrams found.\n\nSave a diagram first using "Save to Arkiv"!');
                         return;
                     }
 
@@ -1643,7 +1643,7 @@
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; font-weight: bold; margin-bottom: 5px;">⏰ Document Storage (BTL Days):</label>
                         <input type="number" id="btlDays" value="${currentConfig.btlDays}" min="1" max="365" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        <div style="font-size: 11px; color: #666; margin-top: 2px;">How many days documents should be stored in Golem DB</div>
+                        <div style="font-size: 11px; color: #666; margin-top: 2px;">How many days documents should be stored in Arkiv</div>
                     </div>
 
                     <div style="margin-bottom: 15px;">
@@ -1785,15 +1785,15 @@
 
             ui.actions.addAction('golemdb-save', function() {
                 saveToGolemDB();
-            }, null, null, '💾 Save to Golem DB');
+            }, null, null, '💾 Save to Arkiv');
 
             ui.actions.addAction('golemdb-load', function() {
                 showLoadDialog();
-            }, null, null, '📂 Open from Golem DB');
+            }, null, null, '📂 Open from Arkiv');
 
             ui.actions.addAction('golemdb-manager', function() {
                 openWebManager();
-            }, null, null, '🌐 Golem DB Manager');
+            }, null, null, '🌐 Arkiv Manager');
 
             // Configuration dialog function
             async function showConfigDialog() {
@@ -1826,11 +1826,11 @@
                 `;
 
                 content.innerHTML = `
-                    <h2 style="margin-top: 0; color: #333; font-size: 24px; margin-bottom: 20px;">⚙️ Golem DB Configuration</h2>
+                    <h2 style="margin-top: 0; color: #333; font-size: 24px; margin-bottom: 20px;">⚙️ Arkiv Configuration</h2>
 
                     <div style="margin: 20px 0;">
                         <h3 style="color: #555; margin-bottom: 15px;">📡 Posting Mode</h3>
-                        <p style="color: #666; margin-bottom: 15px;">Choose how diagrams are saved to Golem DB:</p>
+                        <p style="color: #666; margin-bottom: 15px;">Choose how diagrams are saved to Arkiv:</p>
 
                         <label style="display: block; margin: 10px 0; padding: 15px; border: 2px solid #e1e5e9; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
                             <input type="radio" name="mode" value="sdk" ${isSDKMode ? 'checked' : ''} style="margin-right: 10px;">
@@ -1926,7 +1926,7 @@
                             await ensureGolemNetwork();
                             isSDKMode = true;
                             localStorage.setItem('golem-db-mode', 'sdk');
-                            await showAlert('✅ SDK Mode Enabled', 'Direct posting mode enabled with dPaste configuration! Diagrams will be saved directly from your MetaMask wallet to Golem DB.');
+                            await showAlert('✅ SDK Mode Enabled', 'Direct posting mode enabled with dPaste configuration! Diagrams will be saved directly from your MetaMask wallet to Arkiv.');
                         } else {
                             // Enable backend mode
                             isSDKMode = false;
@@ -2021,7 +2021,7 @@
                     const sdkReady = await initializeGolemSDK();
 
                     if (sdkReady) {
-                        await showAlert('✅ Setup Complete', 'Golem Network is configured and ready!\n\n🌟 You can now save diagrams directly to Golem DB\n💰 You will pay gas fees for transactions\n🔐 Your wallet controls your data');
+                        await showAlert('✅ Setup Complete', 'Golem Network is configured and ready!\n\n🌟 You can now save diagrams directly to Arkiv\n💰 You will pay gas fees for transactions\n🔐 Your wallet controls your data');
                     } else {
                         await showAlert('⚠️ Setup Issue', 'Network configured but SDK initialization failed.\n\nPlease try again or use backend mode.');
                     }
@@ -2039,7 +2039,7 @@
             if (fileMenu && fileMenu.funct) {
                 const oldFunct = fileMenu.funct;
                 fileMenu.funct = function(menu, parent) {
-                    console.log('🔍 Building File menu with Golem DB integration...');
+                    console.log('🔍 Building File menu with Arkiv integration...');
 
                     // Override menu.addItem to intercept and inject our items
                     const originalAddItem = menu.addItem;
@@ -2050,27 +2050,27 @@
                         // Call original addItem first
                         const result = originalAddItem.call(this, label, icon, action, parent, altText, elt, isEnabled);
 
-                        // Inject Save to Golem DB after standard save options
+                        // Inject Save to Arkiv after standard save options
                         if (!saveGroupFound && (
                             label?.includes('Save') ||
                             label?.includes('Export') ||
                             (typeof label === 'string' && (label.includes('save') || label.includes('export')))
                         )) {
                             // Add our save option after the first save-related item
-                            originalAddItem.call(this, '💾 Save to Golem DB', null, function() {
+                            originalAddItem.call(this, '💾 Save to Arkiv', null, function() {
                                 ui.actions.get('golemdb-save').funct();
                             }, parent);
                             saveGroupFound = true;
                         }
 
-                        // Inject Open from Golem DB after standard open options
+                        // Inject Open from Arkiv after standard open options
                         if (!openGroupFound && (
                             label?.includes('Open') ||
                             label?.includes('Import') ||
                             (typeof label === 'string' && (label.includes('open') || label.includes('import')))
                         )) {
                             // Add our open option after the first open-related item
-                            originalAddItem.call(this, '📂 Open from Golem DB', null, function() {
+                            originalAddItem.call(this, '📂 Open from Arkiv', null, function() {
                                 ui.actions.get('golemdb-load').funct();
                             }, parent);
                             openGroupFound = true;
@@ -2097,20 +2097,20 @@
 
                     // Add save item if not already injected
                     if (!saveGroupFound) {
-                        menu.addItem('💾 Save to Golem DB', null, function() {
+                        menu.addItem('💾 Save to Arkiv', null, function() {
                             ui.actions.get('golemdb-save').funct();
                         }, parent);
                     }
 
                     // Add load item if not already injected
                     if (!openGroupFound) {
-                        menu.addItem('📂 Open from Golem DB', null, function() {
+                        menu.addItem('📂 Open from Arkiv', null, function() {
                             ui.actions.get('golemdb-load').funct();
                         }, parent);
                     }
 
                     // Add manager and config items
-                    menu.addItem('🌐 Golem DB Manager', null, function() {
+                    menu.addItem('🌐 Arkiv Manager', null, function() {
                         ui.actions.get('golemdb-manager').funct();
                     }, parent);
 
@@ -2122,7 +2122,7 @@
                         ui.actions.get('golemdb-network').funct();
                     }, parent);
 
-                    console.log('✅ Golem DB menu items integrated successfully!');
+                    console.log('✅ Arkiv menu items integrated successfully!');
                 };
             }
 
@@ -2137,16 +2137,16 @@
                     // Add separator and our items
                     menu.addSeparator();
 
-                    // Add Golem DB options to popup menu
-                    menu.addItem('💾 Save to Golem DB', null, function() {
+                    // Add Arkiv options to popup menu
+                    menu.addItem('💾 Save to Arkiv', null, function() {
                         ui.actions.get('golemdb-save').funct();
                     });
 
-                    menu.addItem('📂 Open from Golem DB', null, function() {
+                    menu.addItem('📂 Open from Arkiv', null, function() {
                         ui.actions.get('golemdb-load').funct();
                     });
 
-                    menu.addItem('🌐 Golem DB Manager', null, function() {
+                    menu.addItem('🌐 Arkiv Manager', null, function() {
                         ui.actions.get('golemdb-manager').funct();
                     });
 
@@ -2158,7 +2158,7 @@
                         ui.actions.get('golemdb-network').funct();
                     });
 
-                    console.log('✅ Golem DB popup menu items added!');
+                    console.log('✅ Arkiv popup menu items added!');
                 };
             }
 
@@ -2321,7 +2321,7 @@
                 }
             }
 
-            console.log('🎉 Built-in Golem DB Plugin loaded successfully!');
+            console.log('🎉 Built-in Arkiv Plugin loaded successfully!');
 
             // Create MetaMask status widget
             createMetaMaskStatusWidget();
@@ -2344,7 +2344,7 @@
             console.log('   • 📊 Wallet status display');
             console.log('   • 📱 Right-click menu integration');
             console.log('');
-            console.log('📍 Right-click on diagram to access Golem DB options');
+            console.log('📍 Right-click on diagram to access Arkiv options');
             console.log('🚀 ========================================');
 
             // Auto-connect wallet after plugin loads
@@ -2395,19 +2395,19 @@
                 modal.innerHTML = `
                     <div style="padding: 40px 30px 30px 30px;">
                         <div style="font-size: 48px; margin-bottom: 20px;">🎉</div>
-                        <h2 style="margin: 0 0 15px 0; font-size: 28px; font-weight: 600;">Golem DB Plugin Ready!</h2>
+                        <h2 style="margin: 0 0 15px 0; font-size: 28px; font-weight: 600;">Arkiv Plugin Ready!</h2>
                         <p style="margin: 0 0 25px 0; font-size: 16px; opacity: 0.9; line-height: 1.5;">
-                            Your Draw.io now has powerful Golem DB integration with MetaMask authentication.
+                            Your Draw.io now has powerful Arkiv integration with MetaMask authentication.
                         </p>
 
                         <div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin: 20px 0; text-align: left;">
                             <div style="font-weight: 600; margin-bottom: 12px; text-align: center;">✨ New Features Available</div>
                             <div style="font-size: 14px; line-height: 1.6;">
                                 • 🔐 <strong>MetaMask Wallet</strong> - Secure authentication<br>
-                                • 💾 <strong>Save to Golem DB</strong> - Decentralized storage<br>
-                                • 📂 <strong>Load from Golem DB</strong> - Access your diagrams<br>
+                                • 💾 <strong>Save to Arkiv</strong> - Decentralized storage<br>
+                                • 📂 <strong>Load from Arkiv</strong> - Access your diagrams<br>
                                 • ⚙️ <strong>Configuration</strong> - Customize BTL & settings<br>
-                                • 🌐 <strong>Golem DB Manager</strong> - Web interface
+                                • 🌐 <strong>Arkiv Manager</strong> - Web interface
                             </div>
                         </div>
 

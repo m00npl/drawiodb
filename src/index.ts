@@ -103,10 +103,10 @@ async function startServer() {
       config.arkiv.wsUrl
     );
 
-    console.log('Initializing Golem DB connection...');
+    console.log('Initializing Arkiv connection...');
     await arkivService.initialize();
     if (!arkivService.hasWriteAccess()) {
-      console.log('⚠️  Golem DB backend running without signing key – write endpoints will return read-only responses.');
+      console.log('⚠️  Arkiv backend running without signing key – write endpoints will return read-only responses.');
     }
 
     // API routes FIRST - before static files
@@ -2286,8 +2286,8 @@ async function startServer() {
     console.log(`🚀 DrawIO Golem Backend starting on port ${config.port}`);
     console.log(`📊 Health check: http://localhost:${config.port}/health`);
     console.log(`📁 API endpoints:`);
-    console.log(`   POST /api/diagrams/export - Export diagram to Golem DB`);
-    console.log(`   GET  /api/diagrams/import/:id - Import diagram from Golem DB`);
+    console.log(`   POST /api/diagrams/export - Export diagram to Arkiv`);
+    console.log(`   GET  /api/diagrams/import/:id - Import diagram from Arkiv`);
     console.log(`   GET  /api/diagrams/list - List all diagrams`);
 
     Bun.serve({

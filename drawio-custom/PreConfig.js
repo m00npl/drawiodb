@@ -31,4 +31,4 @@ urlParams['tr'] = '0'; //trello
 urlParams['gapi'] = '0'; //Google Drive
 urlParams['od'] = '0'; //OneDrive
 urlParams['gl'] = '0'; //Gitlab
-urlParams['plugins'] = '/js/golem-db-plugin.js'; //Load Golem DB Plugin
+urlParams['plugins'] = '/js/golem-db-plugin.js'; //Load Arkiv Plugin

@@ -1,4 +1,4 @@
-# DrawIO Golem DB - Deployment Configuration
+# DrawIO Arkiv - Deployment Configuration
 
 ## Docker Images & Containers
 

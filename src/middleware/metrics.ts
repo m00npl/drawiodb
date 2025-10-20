@@ -33,13 +33,13 @@ const activeConnections = new promClient.Gauge({
 
 const golemDbOperations = new promClient.Counter({
   name: 'golem_db_operations_total',
-  help: 'Total number of Golem DB operations',
+  help: 'Total number of Arkiv operations',
   labelNames: ['operation', 'status']
 });
 
 const golemDbOperationDuration = new promClient.Histogram({
   name: 'golem_db_operation_duration_seconds',
-  help: 'Duration of Golem DB operations in seconds',
+  help: 'Duration of Arkiv operations in seconds',
   labelNames: ['operation'],
   buckets: [0.1, 0.5, 1, 2, 5, 10, 30]
 });
@@ -85,7 +85,7 @@ export function metricsMiddleware() {
   };
 }
 
-// Function to record Golem DB operations
+// Function to record Arkiv operations
 export function recordGolemDbOperation(operation: string, duration: number, success: boolean) {
   golemDbOperations
     .labels(operation, success ? 'success' : 'error')

@@ -72,7 +72,7 @@ export class ArkivService {
       return this.readClient;
     }
 
-    throw new Error('Golem DB client is not initialized');
+    throw new Error('Arkiv client is not initialized');
   }
 
   private ensureWriteClient(): ArkivClient {
@@ -98,7 +98,7 @@ export class ArkivService {
         this.rpcUrl,
         this.wsUrl
       );
-      console.log('Golem DB read-only client initialized successfully');
+      console.log('Arkiv read-only client initialized successfully');
 
       if (this.privateKey) {
         const cleanPrivateKey = this.privateKey.startsWith('0x')
@@ -116,13 +116,13 @@ export class ArkivService {
           this.rpcUrl,
           this.wsUrl
         );
-        console.log('Golem DB write client initialized successfully');
+        console.log('Arkiv write client initialized successfully');
       } else {
-        console.log('Golem DB write client not configured – operating in read-only mode');
+        console.log('Arkiv write client not configured – operating in read-only mode');
       }
     } catch (error) {
-      console.error('Failed to initialize Golem DB client:', error);
-      throw new Error('Golem DB initialization failed');
+      console.error('Failed to initialize Arkiv client:', error);
+      throw new Error('Arkiv initialization failed');
     }
   }
 
@@ -321,7 +321,7 @@ export class ArkivService {
         ]
       }];
 
-      console.log(`Creating entities in Golem DB with ${creates.length} entities`);
+      console.log(`Creating entities in Arkiv with ${creates.length} entities`);
       console.log(`String annotations: ${creates[0].stringAnnotations?.length || 0}`);
       console.log(`Numeric annotations: ${creates[0].numericAnnotations?.length || 0}`);
 
@@ -351,7 +351,7 @@ export class ArkivService {
         }
         throw createError; // Re-throw non-timeout errors
       }
-      console.log(`Golem DB createEntities response:`, createReceipt);
+      console.log(`Arkiv createEntities response:`, createReceipt);
 
       if (createReceipt && createReceipt.length > 0) {
         const entityKey = createReceipt[0].entityKey;
@@ -372,10 +372,10 @@ export class ArkivService {
 
         return entityKey;
       } else {
-        throw new Error('Failed to create entity in Golem DB - no receipt returned');
+        throw new Error('Failed to create entity in Arkiv - no receipt returned');
       }
     } catch (error) {
-      console.error('💥 Error exporting diagram to Golem DB:', error);
+      console.error('💥 Error exporting diagram to Arkiv:', error);
       throw new Error(`Export failed: ${(error as Error).message}`);
     }
   }
@@ -492,7 +492,7 @@ export class ArkivService {
         return shardedResult;
       }
     } catch (error) {
-      console.error('❌ Error importing diagram from Golem DB:', error);
+      console.error('❌ Error importing diagram from Arkiv:', error);
 
       // Preserve our custom expiration error messages
       if ((error as Error).message.includes('expired') || (error as Error).message.includes('BTL')) {
@@ -615,7 +615,7 @@ export class ArkivService {
       console.log(`Found ${diagrams.length} diagrams`);
       return diagrams;
     } catch (error) {
-      console.error('Error listing diagrams from Golem DB:', error);
+      console.error('Error listing diagrams from Arkiv:', error);
       throw new Error(`List operation failed: ${(error as Error).message}`);
     }
   }
@@ -1150,7 +1150,7 @@ export class ArkivService {
       const entity = queryResult[0];
       console.log(`🗑️ Found entity to delete: ${entity.entityKey}`);
 
-      // Delete the entity using Golem DB SDK
+      // Delete the entity using Arkiv SDK
       const deletes = [entity.entityKey];
       console.log(`🗑️ Deleting entity with key: ${entity.entityKey}`);
 
@@ -1166,7 +1166,7 @@ export class ArkivService {
       }
 
     } catch (error) {
-      console.error('❌ Error deleting diagram from Golem DB:', error);
+      console.error('❌ Error deleting diagram from Arkiv:', error);
       throw new Error(`Delete failed: ${(error as Error).message}`);
     }
   }
@@ -1422,7 +1422,7 @@ export class ArkivService {
       const createdBy = walletAddress || custodialId || 'anonymous';
       const shareTokenData = this.userService.createShareTokenData(shareRequest, createdBy);
 
-      // Store share token in Golem DB
+      // Store share token in Arkiv
       const tokenValue = JSON.stringify(shareTokenData);
       const tokenData = new TextEncoder().encode(tokenValue);
 
@@ -1808,7 +1808,7 @@ export class ArkivService {
         ]
       }];
 
-      console.log(`Creating chunk entity in Golem DB: ${chunkRequest.chunkIndex + 1}/${chunkRequest.totalChunks}`);
+      console.log(`Creating chunk entity in Arkiv: ${chunkRequest.chunkIndex + 1}/${chunkRequest.totalChunks}`);
 
       const createReceipt = await client.createEntities(creates);
 
@@ -1817,10 +1817,10 @@ export class ArkivService {
         console.log(`✅ Chunk ${chunkRequest.chunkIndex + 1}/${chunkRequest.totalChunks} exported successfully with entity key: ${entityKey}`);
         return entityKey;
       } else {
-        throw new Error('Failed to create chunk entity in Golem DB - no receipt returned');
+        throw new Error('Failed to create chunk entity in Arkiv - no receipt returned');
       }
     } catch (error) {
-      console.error('💥 Error exporting chunk to Golem DB:', error);
+      console.error('💥 Error exporting chunk to Arkiv:', error);
       throw new Error(`Chunk export failed: ${(error as Error).message}`);
     }
   }

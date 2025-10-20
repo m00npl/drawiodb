@@ -346,18 +346,18 @@ window.onerror = function()
 
 
 
-// Golem DB SDK and Plugin Auto-loader
+// Arkiv SDK and Plugin Auto-loader
 (function(){
-  console.log('🔥 Initializing Golem DB SDK and Plugin Auto-loader...');
+  console.log('🔥 Initializing Arkiv SDK and Plugin Auto-loader...');
   // Load SDK first
   var sdkScript = document.createElement('script');
   sdkScript.src = '/js/golem-db-sdk.js';
   sdkScript.onload = function() {
-    console.log('✅ Golem DB SDK loaded');
+    console.log('✅ Arkiv SDK loaded');
     // Then load plugin
     var pluginScript = document.createElement('script');
     pluginScript.src = '/js/golem-db-plugin.js';
-    pluginScript.onload = function() { console.log('✅ Golem DB Plugin loaded'); };
+    pluginScript.onload = function() { console.log('✅ Arkiv Plugin loaded'); };
     pluginScript.onerror = function() { console.error('❌ Failed to load Plugin'); };
     document.head.appendChild(pluginScript);
   };

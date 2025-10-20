@@ -1,7 +1,7 @@
 {
   "name": "drawio-golem-backend",
   "version": "1.0.0",
-  "description": "Backend service for importing/exporting diagrams from/to Golem DB",
+  "description": "Backend service for importing/exporting diagrams from/to Arkiv",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
