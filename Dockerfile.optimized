@@ -28,8 +28,8 @@ COPY --from=builder /app/package.json ./package.json
 
 # Copy static files
 COPY drawio-public/ ./public/
-COPY drawio-custom/golem-db-plugin.js ./public/js/
-COPY drawio-custom/golem-db-sdk.js ./public/js/
+COPY drawio-custom/arkiv-plugin.js ./public/js/
+COPY drawio-custom/arkiv-sdk.js ./public/js/
 COPY drawio-custom/PreConfig.js ./public/js/PreConfig.js
 
 # Security: Change ownership to non-root user

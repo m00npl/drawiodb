@@ -43,8 +43,8 @@ ssh ubuntu@moon.dev.golem.network "cd /home/ubuntu/projects/drawio && docker com
 ```
 
 ### Files Structure
-- **Source**: `/Users/moon/drawio/drawio-custom/golem-db-plugin.js`
-- **Container**: `/app/public/js/golem-db-plugin.js`
+- **Source**: `/Users/moon/drawio/drawio-custom/arkiv-plugin.js`
+- **Container**: `/app/public/js/arkiv-plugin.js`
 - **Docker Compose**: `/home/ubuntu/projects/drawio/docker-compose.yml`
 
 ## IMPORTANT NOTES
