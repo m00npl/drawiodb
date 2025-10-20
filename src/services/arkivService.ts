@@ -1,13 +1,13 @@
-import { createClient, createROClient, Annotation, AccountData, Tagged, GolemBaseClient, GolemBaseROClient } from 'golem-base-sdk';
+import { createClient, createROClient, Annotation, AccountData, Tagged, ArkivClient, ArkivROClient } from 'arkiv-sdk';
 import { DiagramData, DiagramMetadata, UserConfig, ChunkExportRequest, ChunkData, UserTier, ShareToken, ShareTokenRequest, ShareTokenResponse, SearchRequest, SearchResult, DirectDiagramResult, DiagramThumbnailOptions } from '../types/diagram';
 import { UserService } from './userService';
 import { RetryQueue, RetryOperation } from './retryQueue';
 import crypto from 'crypto';
 import CryptoJS from 'crypto-js';
 
-export class GolemService {
-  private writeClient: GolemBaseClient | null = null;
-  private readClient: GolemBaseROClient | null = null;
+export class ArkivService {
+  private writeClient: ArkivClient | null = null;
+  private readClient: ArkivROClient | null = null;
   private encoder = new TextEncoder();
   private decoder = new TextDecoder();
   private userService = new UserService();
@@ -63,7 +63,7 @@ export class GolemService {
     return this.retryQueue.getQueueStatus();
   }
 
-  private getQueryClient(): GolemBaseClient | GolemBaseROClient {
+  private getQueryClient(): ArkivClient | ArkivROClient {
     if (this.writeClient) {
       return this.writeClient;
     }
@@ -75,7 +75,7 @@ export class GolemService {
     throw new Error('Golem DB client is not initialized');
   }
 
-  private ensureWriteClient(): GolemBaseClient {
+  private ensureWriteClient(): ArkivClient {
     if (!this.writeClient) {
       throw new Error('Backend is running without a signing key. Use the Draw.io plugin with MetaMask to sign and pay for transactions.');
     }

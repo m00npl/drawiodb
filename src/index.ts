@@ -2,9 +2,12 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serveStatic } from 'hono/bun';
 import path from 'path';
-import { GolemService } from './services/golemService';
+import { ArkivService } from './services/arkivService';
 import { createDiagramRoutes } from './routes/diagrams';
 import { config, validateConfig } from './utils/config';
+import { rateLimiter } from './middleware/rateLimiter';
+import { errorHandler, getRecentErrorLogs } from './middleware/errorHandler';
+import { metricsMiddleware, getMetrics, recordRateLimitHit } from './middleware/metrics';
 
 async function startServer() {
   try {
@@ -12,12 +15,74 @@ async function startServer() {
 
     const app = new Hono();
 
-    app.use('*', cors());
+    // Global error handler (must be first)
+    app.use('*', errorHandler());
+
+    // Metrics collection (should be early)
+    app.use('*', metricsMiddleware());
+
+    // Rate limiting - different limits for different endpoints
+    app.use('/api/diagrams/export', rateLimiter({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      maxRequests: 10, // Max 10 exports per 15 min
+      message: 'Too many diagram exports. Please wait 15 minutes before trying again.'
+    }));
+
+    app.use('/api/diagrams/*', rateLimiter({
+      windowMs: 1 * 60 * 1000, // 1 minute
+      maxRequests: 30, // Max 30 API calls per minute
+      message: 'Too many API requests. Please wait a minute before trying again.'
+    }));
+
+    app.use('*', rateLimiter({
+      windowMs: 1 * 60 * 1000, // 1 minute
+      maxRequests: 100, // Max 100 requests per minute for all other endpoints
+      message: 'Too many requests. Please slow down.'
+    }));
+
+    app.use('*', cors({
+      origin: [
+        'https://drawiodb.online',
+        'https://app.diagrams.net',
+        'https://draw.io'
+      ],
+      credentials: true
+    }));
 
     // Add security headers
     app.use('*', async (c, next) => {
       await next();
-      c.header('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; connect-src 'self' https: wss:; img-src 'self' data: https:");
+
+      // Enhanced Content Security Policy
+      const cspPolicy = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://cdn.ethers.io https://storage.googleapis.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
+        "img-src 'self' data: https: blob:",
+        "media-src 'self' data: blob:",
+        "connect-src 'self' https://https://kaolin.hoodi.arkiv.network/rpc wss://https://kaolin.hoodi.arkiv.network/rpc https://https://kaolin.hoodi.arkiv.network/rpc wss://https://kaolin.hoodi.arkiv.network/rpc https:",
+        "frame-src 'self' https://app.diagrams.net https://draw.io",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'self' https://app.diagrams.net https://draw.io",
+        "upgrade-insecure-requests"
+      ].join('; ');
+
+      c.header('Content-Security-Policy', cspPolicy);
+
+      // Additional security headers
+      c.header('X-Content-Type-Options', 'nosniff');
+      c.header('X-Frame-Options', 'SAMEORIGIN');
+      c.header('X-XSS-Protection', '1; mode=block');
+      c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+      c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+
+      // HSTS (only for HTTPS)
+      if (c.req.header('x-forwarded-proto') === 'https') {
+        c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+      }
     });
 
     // In-memory storage for share tokens (in production, use a database)
@@ -31,16 +96,16 @@ async function startServer() {
       accessCount: number;
     }>();
 
-    const golemService = new GolemService(
-      config.golem.chainId,
-      config.golem.privateKey,
-      config.golem.rpcUrl,
-      config.golem.wsUrl
+    const arkivService = new ArkivService(
+      config.arkiv.chainId,
+      config.arkiv.privateKey,
+      config.arkiv.rpcUrl,
+      config.arkiv.wsUrl
     );
 
     console.log('Initializing Golem DB connection...');
-    await golemService.initialize();
-    if (!golemService.hasWriteAccess()) {
+    await arkivService.initialize();
+    if (!arkivService.hasWriteAccess()) {
       console.log('⚠️  Golem DB backend running without signing key – write endpoints will return read-only responses.');
     }
 
@@ -61,7 +126,7 @@ async function startServer() {
 
         // Allow export even without backend private key - user can sign with MetaMask
 
-        const diagramId = golemService.generateDiagramId();
+        const diagramId = arkivService.generateDiagramId();
         const diagramData = {
           id: diagramId,
           title: exportRequest.title,
@@ -71,7 +136,7 @@ async function startServer() {
           version: 1
         };
 
-        const entityKey = await golemService.exportDiagram(diagramData, walletAddress, undefined, exportRequest.encryptionPassword, custodialId);
+        const entityKey = await arkivService.exportDiagram(diagramData, walletAddress, undefined, exportRequest.encryptionPassword, custodialId);
 
         // Check if backend indicated frontend should handle transaction
         if (entityKey === 'USE_FRONTEND') {
@@ -109,7 +174,7 @@ async function startServer() {
           }, 400);
         }
 
-        const diagramData = await golemService.importDiagram(diagramId);
+        const diagramData = await arkivService.importDiagram(diagramId);
 
         if (!diagramData) {
           return c.json({
@@ -159,7 +224,7 @@ async function startServer() {
 
         console.log(`Listing diagrams for wallet: ${walletAddress}, custodial: ${custodialId}, limit: ${limit}, offset: ${offset}`);
 
-        const allDiagrams = await golemService.listDiagrams(author, walletAddress, custodialId);
+        const allDiagrams = await arkivService.listDiagrams(author, walletAddress, custodialId);
 
         // Sort by timestamp (newest first) and apply pagination
         const sortedDiagrams = allDiagrams.sort((a, b) => b.timestamp - a.timestamp);
@@ -203,7 +268,7 @@ async function startServer() {
         console.log(`Searching diagrams: query="${query}", title="${title}", author="${author}"`);
 
         // Get all diagrams for the user
-        const allDiagrams = await golemService.listDiagrams(author, walletAddress, custodialId);
+        const allDiagrams = await arkivService.listDiagrams(author, walletAddress, custodialId);
 
         // Filter diagrams based on search criteria
         let filteredDiagrams = allDiagrams.filter(diagram => {
@@ -290,7 +355,7 @@ async function startServer() {
                 });
               } else {
                 // Fetch content for deep search
-                const diagramData = await golemService.importDiagram(diagram.id);
+                const diagramData = await arkivService.importDiagram(diagram.id);
                 if (diagramData && diagramData.content.toLowerCase().includes(searchTerm)) {
                   // Extract excerpt around the match
                   const content = diagramData.content.toLowerCase();
@@ -381,7 +446,7 @@ async function startServer() {
 
         console.log(`Deleting diagram ${diagramId} for wallet: ${walletAddress}, custodial: ${custodialId}`);
 
-        const result = await golemService.deleteDiagram(diagramId, walletAddress, custodialId);
+        const result = await arkivService.deleteDiagram(diagramId, walletAddress, custodialId);
 
         // Check if backend indicated frontend should handle deletion
         if (result === false) {
@@ -424,7 +489,7 @@ async function startServer() {
 
         console.log(`Renaming diagram ${diagramId} to "${newTitle}" for wallet: ${walletAddress}, custodial: ${custodialId}`);
 
-        const result = await golemService.renameDiagram(diagramId, newTitle, walletAddress, custodialId);
+        const result = await arkivService.renameDiagram(diagramId, newTitle, walletAddress, custodialId);
 
         // Check if backend indicated frontend should handle rename
         if (result === false) {
@@ -468,7 +533,7 @@ async function startServer() {
 
         console.log(`Changing BTL for diagram ${diagramId} to ${newBTLDays} days for wallet: ${walletAddress}, custodial: ${custodialId}`);
 
-        const result = await golemService.changeDiagramBTL(diagramId, newBTLDays, walletAddress, custodialId);
+        const result = await arkivService.changeDiagramBTL(diagramId, newBTLDays, walletAddress, custodialId);
 
         // Check if backend indicated frontend should handle BTL change
         if (result === false) {
@@ -511,7 +576,7 @@ async function startServer() {
 
         console.log(`Protecting diagram ${diagramId} for wallet: ${walletAddress}, custodial: ${custodialId}`);
 
-        const result = await golemService.protectDiagram(diagramId, walletAddress, custodialId);
+        const result = await arkivService.protectDiagram(diagramId, walletAddress, custodialId);
 
         // Check if backend indicated frontend should handle protection
         if (result === false) {
@@ -668,7 +733,7 @@ async function startServer() {
         // Fetch the actual diagram data
         let diagramData;
         try {
-          diagramData = await golemService.importDiagram(shareData.diagramId);
+          diagramData = await arkivService.importDiagram(shareData.diagramId);
 
           if (!diagramData) {
             return c.html(`
@@ -1302,7 +1367,7 @@ async function startServer() {
         } else {
           // Direct format access - use the diagram direct access functionality
           try {
-            const directResult = await golemService.getDiagramDirect(shareData.diagramId, format);
+            const directResult = await arkivService.getDiagramDirect(shareData.diagramId, format);
 
             if (!directResult) {
               return c.json({
@@ -1349,7 +1414,7 @@ async function startServer() {
         const custodialId = c.req.header('x-custodial-id');
 
         // Get user tier information
-        const userTierInfo = golemService.getUserTierInfo(walletAddress, custodialId);
+        const userTierInfo = arkivService.getUserTierInfo(walletAddress, custodialId);
 
         // Return default user config with tier information
         const defaultConfig = {
@@ -1362,7 +1427,7 @@ async function startServer() {
         return c.json({
           success: true,
           config: defaultConfig,
-          readOnlyMode: !config.golem.privateKey, // Indicate if backend can handle transactions
+          readOnlyMode: !config.arkiv.privateKey, // Indicate if backend can handle transactions
           userTier: userTierInfo.tier,
           limits: userTierInfo.limits,
           displayInfo: userTierInfo.displayInfo
@@ -1415,7 +1480,7 @@ async function startServer() {
         };
 
         // Save configuration using GolemService
-        const savedConfigId = await golemService.saveUserConfig(configToSave);
+        const savedConfigId = await arkivService.saveUserConfig(configToSave);
 
         return c.json({
           success: true,
@@ -1447,10 +1512,10 @@ async function startServer() {
         }
 
         // Get user tier information
-        const userTierInfo = golemService.getUserTierInfo(walletAddress, custodialId);
+        const userTierInfo = arkivService.getUserTierInfo(walletAddress, custodialId);
 
         // Get user's diagrams to calculate usage
-        const diagrams = await golemService.listDiagrams(walletAddress || custodialId!, walletAddress, custodialId);
+        const diagrams = await arkivService.listDiagrams(walletAddress || custodialId!, walletAddress, custodialId);
 
         // Calculate storage usage (estimate from metadata)
         const totalDiagrams = diagrams.length;
@@ -1528,7 +1593,7 @@ async function startServer() {
 
         console.log(`Enhanced search by wallet: ${walletAddress}, custodial: ${custodialId}`, searchRequest);
 
-        const results = await golemService.searchDiagrams(searchRequest, walletAddress, custodialId);
+        const results = await arkivService.searchDiagrams(searchRequest, walletAddress, custodialId);
 
         return c.json({
           success: true,
@@ -1561,7 +1626,7 @@ async function startServer() {
 
         console.log(`Creating share token for diagram ${diagramId} by wallet: ${walletAddress}, custodial: ${custodialId}`);
 
-        const result = await golemService.createShareToken(diagramId, shareRequest, walletAddress, custodialId);
+        const result = await arkivService.createShareToken(diagramId, shareRequest, walletAddress, custodialId);
 
         return c.json(result);
       } catch (error) {
@@ -1589,7 +1654,7 @@ async function startServer() {
         console.log(`Accessing shared diagram with token: ${token}, format: ${format}`);
 
         // Get the shared diagram data
-        const result = await golemService.accessSharedDiagram(token);
+        const result = await arkivService.accessSharedDiagram(token);
 
         if (!result) {
           return c.json({
@@ -1608,7 +1673,7 @@ async function startServer() {
 
         // For other formats, use direct diagram conversion
         try {
-          const directResult = await golemService.getDiagramDirect(result.id, format);
+          const directResult = await arkivService.getDiagramDirect(result.id, format);
 
           if (!directResult) {
             return c.json({
@@ -1663,7 +1728,7 @@ async function startServer() {
 
         console.log(`Listing share tokens for diagram ${diagramId} by wallet: ${walletAddress}, custodial: ${custodialId}`);
 
-        const shares = await golemService.listShareTokens(diagramId, walletAddress, custodialId);
+        const shares = await arkivService.listShareTokens(diagramId, walletAddress, custodialId);
 
         return c.json({
           success: true,
@@ -1694,7 +1759,7 @@ async function startServer() {
 
         console.log(`Revoking share token ${token} by wallet: ${walletAddress}, custodial: ${custodialId}`);
 
-        const result = await golemService.revokeShareToken(token, walletAddress, custodialId);
+        const result = await arkivService.revokeShareToken(token, walletAddress, custodialId);
 
         if (!result) {
           return c.json({
@@ -1737,7 +1802,7 @@ async function startServer() {
 
         let result;
         try {
-          result = await golemService.getDiagramDirect(diagramId, format);
+          result = await arkivService.getDiagramDirect(diagramId, format);
 
           if (!result) {
             return c.json({
@@ -1831,13 +1896,13 @@ async function startServer() {
           // Get diagram metadata to provide additional context
           let diagramMeta;
           try {
-            diagramMeta = await golemService.getDiagramMetadata(diagramId);
+            diagramMeta = await arkivService.getDiagramMetadata(diagramId);
           } catch (metaError) {
             console.log('Could not load diagram metadata:', metaError);
           }
 
           // Check if user can access sharing features
-          const userTier = golemService.getUserTierInfo(walletAddress, custodialId);
+          const userTier = arkivService.getUserTierInfo(walletAddress, custodialId);
 
           // Enhanced HTML viewer with sharing options and metadata
           const enhancedContent = result.content
@@ -1953,7 +2018,7 @@ async function startServer() {
 
         console.log(`Diagram metadata access: ${diagramId}`);
 
-        const metadata = await golemService.getDiagramMetadata(diagramId);
+        const metadata = await arkivService.getDiagramMetadata(diagramId);
 
         if (!metadata) {
           return c.json({
@@ -1990,7 +2055,7 @@ async function startServer() {
 
         console.log(`Diagram thumbnail access: ${diagramId}, size: ${size}`);
 
-        const thumbnail = await golemService.getDiagramThumbnail(diagramId, size);
+        const thumbnail = await arkivService.getDiagramThumbnail(diagramId, size);
 
         if (!thumbnail) {
           return c.json({
@@ -2017,10 +2082,10 @@ async function startServer() {
     // Create custodial session
     app.post('/api/auth/custodial', async (c) => {
       try {
-        const custodialId = golemService.generateCustodialId();
+        const custodialId = arkivService.generateCustodialId();
         console.log(`Created custodial session: ${custodialId}`);
 
-        const userInfo = await golemService.getUserTierInfo(undefined, custodialId);
+        const userInfo = await arkivService.getUserTierInfo(undefined, custodialId);
 
         return c.json({
           success: true,
@@ -2042,7 +2107,7 @@ async function startServer() {
         const walletAddress = c.req.header('x-wallet-address');
         const custodialId = c.req.header('x-custodial-id');
 
-        const userInfo = await golemService.getUserTierInfo(walletAddress, custodialId);
+        const userInfo = await arkivService.getUserTierInfo(walletAddress, custodialId);
 
         return c.json({
           success: true,
@@ -2075,7 +2140,7 @@ async function startServer() {
         console.log(`Getting versions for diagram: ${diagramId}`);
 
         // Get all versions of this diagram
-        const versions = await golemService.getDiagramVersions(diagramId, walletAddress, custodialId);
+        const versions = await arkivService.getDiagramVersions(diagramId, walletAddress, custodialId);
 
         return c.json({
           success: true,
@@ -2095,7 +2160,7 @@ async function startServer() {
     // Retry queue status endpoint
     app.get('/api/retry-queue/status', (c) => {
       try {
-        const queueStatus = golemService.getRetryQueueStatus();
+        const queueStatus = arkivService.getRetryQueueStatus();
         return c.json({
           success: true,
           data: queueStatus
@@ -2157,6 +2222,42 @@ async function startServer() {
     app.use('/math/*', serveStatic({ root: path.join(__dirname, '../public') }));
     app.use('/images/*', serveStatic({ root: path.join(__dirname, '../public') }));
     app.use('/favicon.ico', serveStatic({ root: path.join(__dirname, '../public') }));
+
+    // Metrics endpoint for Prometheus
+    app.get('/metrics', async (c) => {
+      const metrics = await getMetrics();
+      c.header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+      return c.text(metrics);
+    });
+
+    // Monitoring endpoints
+    app.get('/health', async (c) => {
+      try {
+        const health = {
+          status: 'healthy',
+          timestamp: new Date().toISOString(),
+          uptime: process.uptime(),
+          memory: process.memoryUsage(),
+          version: process.version,
+          environment: process.env.NODE_ENV || 'development'
+        };
+        return c.json(health);
+      } catch (error) {
+        return c.json({
+          status: 'unhealthy',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
+      }
+    });
+
+    app.get('/api/monitoring/errors', async (c) => {
+      const limit = parseInt(c.req.query('limit') || '50');
+      const errors = getRecentErrorLogs(limit);
+      return c.json({
+        total: errors.length,
+        errors: errors
+      });
+    });
 
     // Root path for Draw.io HTML
     app.get('/', async (c) => {

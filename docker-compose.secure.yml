@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  drawio-backend:
+    image: moonplkr/drawio-golem-backend:latest
+    container_name: drawio-golem-backend
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - backend_network
+      - frontend_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.drawio-api.rule=Host(`api.drawiodb.online`)"
+      - "traefik.http.routers.drawio-api.entrypoints=websecure"
+      - "traefik.http.routers.drawio-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.drawio-api.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.api-rate-limit.ratelimit.burst=50"
+      - "traefik.http.middlewares.api-rate-limit.ratelimit.average=10"
+      - "traefik.http.routers.drawio-api.middlewares=api-rate-limit"
+
+  drawio-app:
+    image: moonplkr/drawio-simple:latest
+    container_name: drawio-app
+    restart: unless-stopped
+    networks:
+      - frontend_network
+    depends_on:
+      - drawio-backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.drawio.rule=Host(`drawiodb.online`)"
+      - "traefik.http.routers.drawio.entrypoints=websecure"
+      - "traefik.http.routers.drawio.tls.certresolver=letsencrypt"
+      - "traefik.http.services.drawio.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.frontend-compress.compress=true"
+      - "traefik.http.middlewares.frontend-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.drawio.middlewares=frontend-compress,frontend-headers"
+
+networks:
+  frontend_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/24
+  backend_network:
+    driver: bridge
+    internal: true  # No external access
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  moon_golem_network:
+    external: true

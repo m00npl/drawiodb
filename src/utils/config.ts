@@ -1,4 +1,4 @@
-interface GolemConfig {
+interface ArkivConfig {
   chainId: string;
   privateKey?: string;
   rpcUrl: string;
@@ -7,29 +7,29 @@ interface GolemConfig {
 
 interface AppConfig {
   port: number | string;
-  golem: GolemConfig;
+  arkiv: ArkivConfig;
 }
 
 export const config: AppConfig = {
   port: process.env.PORT || 3000,
-  golem: {
-    chainId: process.env.GOLEM_CHAIN_ID || '60138453025',
-    privateKey: process.env.GOLEM_PRIVATE_KEY,
-    rpcUrl: process.env.GOLEM_RPC_URL || 'https://kaolin.holesky.golemdb.io/rpc',
-    wsUrl: process.env.GOLEM_WS_URL || 'wss://kaolin.holesky.golemdb.io/rpc/ws'
+  arkiv: {
+    chainId: process.env.ARKIV_CHAIN_ID || process.env.GOLEM_CHAIN_ID || '60138453025',
+    privateKey: process.env.ARKIV_PRIVATE_KEY || process.env.GOLEM_PRIVATE_KEY,
+    rpcUrl: process.env.ARKIV_RPC_URL || process.env.GOLEM_RPC_URL || 'https://kaolin.hoodi.arkiv.network/rpc',
+    wsUrl: process.env.ARKIV_WS_URL || process.env.GOLEM_WS_URL || 'wss://https://kaolin.hoodi.arkiv.network/rpc/rpc/ws'
   }
 };
 
 export function validateConfig(): void {
-  if (!config.golem.rpcUrl) {
-    throw new Error('GOLEM_RPC_URL environment variable is required');
+  if (!config.arkiv.rpcUrl) {
+    throw new Error('ARKIV_RPC_URL (or GOLEM_RPC_URL) environment variable is required');
   }
 
-  if (!config.golem.wsUrl) {
-    throw new Error('GOLEM_WS_URL environment variable is required');
+  if (!config.arkiv.wsUrl) {
+    throw new Error('ARKIV_WS_URL (or GOLEM_WS_URL) environment variable is required');
   }
 
-  if (!config.golem.privateKey) {
-    console.warn('[config] GOLEM_PRIVATE_KEY is not set – backend will run in read-only mode. Users must sign transactions with MetaMask.');
+  if (!config.arkiv.privateKey) {
+    console.warn('[config] ARKIV_PRIVATE_KEY is not set – backend will run in read-only mode. Users must sign transactions with MetaMask.');
   }
 }

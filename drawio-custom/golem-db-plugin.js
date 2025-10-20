@@ -80,9 +80,9 @@
     const GOLEM_CONFIG = {
         chainId: 60138453025, // Kaolin RPC actual chain ID (0xe0087f821)
         chainIdHex: '0xe0087f821',
-        rpcUrl: 'https://kaolin.holesky.golemdb.io/rpc',
-        wsUrl: 'wss://kaolin.holesky.golemdb.io/rpc/ws',
-        explorerUrl: 'https://explorer.kaolin.holesky.golemdb.io',
+        rpcUrl: 'https://kaolin.hoodi.arkiv.network/rpc',
+        wsUrl: 'wss://https://kaolin.hoodi.arkiv.network/rpc/rpc/ws',
+        explorerUrl: 'https://explorer.https://kaolin.hoodi.arkiv.network/rpc',
         name: 'Golem Kaolin Testnet'
     };
 
@@ -601,7 +601,7 @@
                     await loadExternalLibrary('ethers');
 
                     golemDB = new window.GolemDB({
-                        rpcUrl: 'https://kaolin.holesky.golemdb.io/rpc',
+                        rpcUrl: 'https://kaolin.hoodi.arkiv.network/rpc',
                         chainId: 0xE0087F821
                     });
                     await golemDB.connect();
@@ -644,9 +644,9 @@
 
                     // Calculate BTL - default 100 days
                     const btlDays = userConfig?.btlDays || 100;
-                    const btlBlocks = db.calculateBTL(btlDays);
+                    const btlBlocks = golemClient.calculateBTL(btlDays);
 
-                    const result = await db.createEntity(
+                    const result = await golemClient.createEntity(
                         JSON.stringify(diagramData),
                         annotations,
                         btlBlocks
@@ -1376,7 +1376,7 @@
                         if (sdkAvailable) {
                             console.log('🚀 Using SDK mode for direct MetaMask signing');
                             const result = await saveToGolemDBViaSdk(xmlString, diagramId, title.trim(), walletAddress, encryptThisDiagram);
-                            const explorerUrl = `https://explorer.kaolin.holesky.golemdb.io/entity/${result.entityKey}`;
+                            const explorerUrl = `https://explorer.https://kaolin.hoodi.arkiv.network/rpc/entity/${result.entityKey}`;
                             await showAlert('✅ Diagram Saved', `Diagram saved directly to Golem DB!\n\nDiagram ID: ${result.diagramId}\nEntity Key: <a href="${explorerUrl}" target="_blank" style="color: #4A90E2; text-decoration: underline;">${result.entityKey}</a>`);
                             return;
                         }
@@ -1463,7 +1463,7 @@
 
                     ui.spinner.stop();
 
-                    const explorerUrl = `https://explorer.kaolin.holesky.golemdb.io/entity/${entityResult.entityKey}`;
+                    const explorerUrl = `https://explorer.https://kaolin.hoodi.arkiv.network/rpc/entity/${entityResult.entityKey}`;
                     await showAlert('✅ Diagram Saved', `Diagram saved directly to Golem DB!\n\nDiagram ID: ${diagramData.id}\nEntity Key: <a href="${explorerUrl}" target="_blank" style="color: #4A90E2; text-decoration: underline;">${entityResult.entityKey}</a>`);
                     return;
                 }
@@ -1475,7 +1475,7 @@
                 ui.spinner.stop();
 
                 if (result.success) {
-                    const explorerUrl = `https://explorer.kaolin.holesky.golemdb.io/entity/${result.entityKey}`;
+                    const explorerUrl = `https://explorer.https://kaolin.hoodi.arkiv.network/rpc/entity/${result.entityKey}`;
                     await showAlert('✅ Diagram Saved', `Diagram saved to Golem DB!\n\nDiagram ID: ${result.diagramId}\nEntity Key: <a href="${explorerUrl}" target="_blank" style="color: #4A90E2; text-decoration: underline;">${result.entityKey}</a>`);
                 } else {
                     throw new Error(result.error || 'Save failed');
@@ -3083,7 +3083,7 @@
                     encryptByDefault: false,
                     encryptionPassword: '',
                     useTestnet: false,
-                    testnetRpc: 'https://rpc.kaolin.holesky.golemdb.io',
+                    testnetRpc: 'https://rpc.https://kaolin.hoodi.arkiv.network/rpc',
                     testnetChainId: 60138453025
                 };
 
@@ -3113,7 +3113,7 @@
                         <div id="testnetConfig" style="margin-left: 20px; ${currentConfig.useTestnet ? '' : 'display: none;'}">
                             <div style="margin-bottom: 8px;">
                                 <label style="display: block; font-weight: bold; margin-bottom: 3px; font-size: 12px;">Testnet RPC URL:</label>
-                                <input type="text" id="testnetRpc" value="${currentConfig.testnetRpc || 'https://rpc.kaolin.holesky.golemdb.io'}" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+                                <input type="text" id="testnetRpc" value="${currentConfig.testnetRpc || 'https://rpc.https://kaolin.hoodi.arkiv.network/rpc'}" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
                             </div>
                             <div style="margin-bottom: 8px;">
                                 <label style="display: block; font-weight: bold; margin-bottom: 3px; font-size: 12px;">Testnet Chain ID:</label>

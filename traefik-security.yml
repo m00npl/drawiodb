@@ -1,0 +1,91 @@
+# Enhanced Traefik Configuration for Production Security
+# Add these labels to your docker-compose.yml for DrawIO services
+
+# Security Headers Middleware
+http:
+  middlewares:
+    security-headers:
+      headers:
+        # Security Headers
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+        customResponseHeaders:
+          X-Frame-Options: "SAMEORIGIN"
+          X-Content-Type-Options: "nosniff"
+          X-XSS-Protection: "1; mode=block"
+          Referrer-Policy: "strict-origin-when-cross-origin"
+          Permissions-Policy: "camera=(), microphone=(), geolocation=(), payment=()"
+        # HSTS with 1 year max-age
+        customRequestHeaders:
+          Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+
+    # Rate Limiting
+    rate-limit:
+      rateLimit:
+        burst: 100
+        average: 50
+
+    # IP Whitelist for Admin endpoints
+    admin-whitelist:
+      ipWhiteList:
+        sourceRange:
+          - "127.0.0.1/32"
+          - "172.28.0.0/16"  # Internal network only
+
+    # Compression
+    compression:
+      compress: true
+
+    # CORS for API
+    cors-headers:
+      headers:
+        accessControlAllowOriginList:
+          - "https://drawiodb.online"
+          - "https://api.drawiodb.online"
+        accessControlAllowMethods:
+          - "GET"
+          - "POST"
+          - "PUT"
+          - "DELETE"
+          - "OPTIONS"
+        accessControlAllowHeaders:
+          - "Content-Type"
+          - "Authorization"
+          - "X-Wallet-Address"
+          - "X-Custodial-ID"
+        accessControlMaxAge: 86400
+
+# Certificate configuration
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@drawiodb.online
+      storage: /etc/traefik/acme.json
+      httpChallenge:
+        entryPoint: web
+      # Key type for better performance
+      keyType: EC256
+
+# TLS Configuration
+tls:
+  options:
+    default:
+      sslProtocols:
+        - "TLSv1.2"
+        - "TLSv1.3"
+      cipherSuites:
+        - "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+        - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+        - "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305"
+        - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+        - "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
+        - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+
+# Labels to add to DrawIO services:
+# For Frontend (drawio-app):
+labels:
+  - "traefik.http.routers.drawio.middlewares=security-headers,compression,rate-limit"
+
+# For Backend API (drawio-backend):
+labels:
+  - "traefik.http.routers.drawio-api.middlewares=security-headers,cors-headers,compression,rate-limit"

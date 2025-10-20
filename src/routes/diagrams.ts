@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { GolemService } from '../services/golemService';
+import { ArkivService } from '../services/arkivService';
 import { DiagramData, ExportRequest, ImportResponse, ExportResponse, ConfigRequest, ConfigResponse, UserConfig, ChunkExportRequest, ChunkExportResponse } from '../types/diagram';
 
-export function createDiagramRoutes(golemService: GolemService): Hono {
+export function createDiagramRoutes(arkivService: ArkivService): Hono {
   const router = new Hono();
 
   router.post('/export', async (c: Context) => {
@@ -18,14 +18,14 @@ export function createDiagramRoutes(golemService: GolemService): Hono {
         } as ExportResponse, 400);
       }
 
-      if (!golemService.hasWriteAccess()) {
+      if (!arkivService.hasWriteAccess()) {
         return c.json({
           success: false,
           error: 'Backend is running in read-only mode. Please use the Draw.io plugin with MetaMask so the user can sign and pay for the transaction.'
         } as ExportResponse, 503);
       }
 
-      const diagramId = golemService.generateDiagramId();
+      const diagramId = arkivService.generateDiagramId();
       const diagramData: DiagramData = {
         id: diagramId,
         title: exportRequest.title,
@@ -35,7 +35,7 @@ export function createDiagramRoutes(golemService: GolemService): Hono {
         version: 1
       };
 
-      const entityKey = await golemService.exportDiagram(diagramData, walletAddress, undefined, exportRequest.encryptionPassword);
+      const entityKey = await arkivService.exportDiagram(diagramData, walletAddress, undefined, exportRequest.encryptionPassword);
 
       return c.json({
         success: true,
@@ -63,7 +63,7 @@ export function createDiagramRoutes(golemService: GolemService): Hono {
         } as ImportResponse, 400);
       }
 
-      const diagramData = await golemService.importDiagram(diagramId);
+      const diagramData = await arkivService.importDiagram(diagramId);
 
       if (!diagramData) {
         return c.json({
@@ -93,7 +93,7 @@ export function createDiagramRoutes(golemService: GolemService): Hono {
 
       console.log(`Listing diagrams for wallet: ${walletAddress}`);
 
-      const diagrams = await golemService.listDiagrams(author, walletAddress);
+      const diagrams = await arkivService.listDiagrams(author, walletAddress);
 
       return c.json({
         success: true,

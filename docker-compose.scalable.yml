@@ -1,0 +1,154 @@
+version: '3.8'
+
+services:
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: drawio-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # Load balancer for backend services
+  backend-lb:
+    image: nginx:alpine
+    container_name: drawio-backend-lb
+    restart: unless-stopped
+    volumes:
+      - ./nginx/backend-lb.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - backend_network
+      - frontend_network
+    depends_on:
+      - drawio-backend-1
+      - drawio-backend-2
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.drawio-api.rule=Host(`api.drawiodb.online`)"
+      - "traefik.http.routers.drawio-api.entrypoints=websecure"
+      - "traefik.http.routers.drawio-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.drawio-api.loadbalancer.server.port=80"
+
+  # Backend service instances
+  drawio-backend-1:
+    image: moonplkr/drawio-golem-backend:latest
+    container_name: drawio-golem-backend-1
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - INSTANCE_ID=backend-1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - backend_network
+    depends_on:
+      - redis
+
+  drawio-backend-2:
+    image: moonplkr/drawio-golem-backend:latest
+    container_name: drawio-golem-backend-2
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - INSTANCE_ID=backend-2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - backend_network
+    depends_on:
+      - redis
+
+  # Frontend service instances with load balancing
+  drawio-app-1:
+    image: moonplkr/drawio-simple:latest
+    container_name: drawio-app-1
+    restart: unless-stopped
+    networks:
+      - frontend_network
+    depends_on:
+      - backend-lb
+
+  drawio-app-2:
+    image: moonplkr/drawio-simple:latest
+    container_name: drawio-app-2
+    restart: unless-stopped
+    networks:
+      - frontend_network
+    depends_on:
+      - backend-lb
+
+  # Load balancer for frontend services
+  frontend-lb:
+    image: nginx:alpine
+    container_name: drawio-frontend-lb
+    restart: unless-stopped
+    volumes:
+      - ./nginx/frontend-lb.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - frontend_network
+    depends_on:
+      - drawio-app-1
+      - drawio-app-2
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.drawio.rule=Host(`drawiodb.online`)"
+      - "traefik.http.routers.drawio.entrypoints=websecure"
+      - "traefik.http.routers.drawio.tls.certresolver=letsencrypt"
+      - "traefik.http.services.drawio.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.frontend-compress.compress=true"
+      - "traefik.http.routers.drawio.middlewares=frontend-compress"
+
+  # CDN/Caching layer
+  varnish:
+    image: varnish:stable
+    container_name: drawio-varnish
+    restart: unless-stopped
+    volumes:
+      - ./varnish/default.vcl:/etc/varnish/default.vcl:ro
+    networks:
+      - frontend_network
+    depends_on:
+      - frontend-lb
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.drawio-cache.rule=Host(`cache.drawiodb.online`)"
+      - "traefik.http.routers.drawio-cache.entrypoints=websecure"
+      - "traefik.http.routers.drawio-cache.tls.certresolver=letsencrypt"
+
+volumes:
+  redis_data:
+
+networks:
+  frontend_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/24
+  backend_network:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

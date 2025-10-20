@@ -1,0 +1,63 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # cAdvisor for container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # DrawIO Backend metrics
+  - job_name: 'drawio-backend'
+    static_configs:
+      - targets: ['drawio-golem-backend:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # DrawIO Frontend metrics
+  - job_name: 'drawio-frontend'
+    static_configs:
+      - targets: ['drawio-app:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Traefik metrics
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['traefik:8080']
+    metrics_path: '/metrics'
+
+  # Custom application metrics
+  - job_name: 'drawio-api-health'
+    static_configs:
+      - targets: ['api.drawiodb.online']
+    metrics_path: '/api/health'
+    scheme: https
+    scrape_interval: 60s
+
+  - job_name: 'drawio-frontend-health'
+    static_configs:
+      - targets: ['drawiodb.online']
+    metrics_path: '/health'
+    scheme: https
+    scrape_interval: 60s
