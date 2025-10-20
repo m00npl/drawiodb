@@ -2177,7 +2177,7 @@ async function startServer() {
       return c.json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        service: 'drawio-golem-backend'
+        service: 'drawio-arkiv-backend'
       });
     });
 
@@ -2186,7 +2186,7 @@ async function startServer() {
       return c.json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        service: 'drawio-golem-backend'
+        service: 'drawio-arkiv-backend'
       });
     });
 
@@ -2195,7 +2195,7 @@ async function startServer() {
       return c.json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        service: 'drawio-golem-backend',
+        service: 'drawio-arkiv-backend',
         component: 'diagrams'
       });
     });
