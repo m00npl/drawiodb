@@ -7,7 +7,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=8080
-      - DRAWIO_EXPORTER_URL=http://drawio-exporter:8081
+      - DRAWIO_EXPORTER_URL=http://drawio-exporter:5000
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -43,7 +43,7 @@ services:
     networks:
       - moon_golem_network
     # No external ports - internal use only
-    # Service exposes HTTP REST API on port 8080 internally
+    # Service exposes HTTP REST API on port 5000 internally
     labels:
       - "traefik.enable=false"
 

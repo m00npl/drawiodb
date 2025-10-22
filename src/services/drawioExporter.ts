@@ -5,7 +5,7 @@
 export class DrawIOExporterService {
   private exporterUrl: string;
 
-  constructor(exporterUrl: string = 'http://drawio-exporter:8080') {
+  constructor(exporterUrl: string = 'http://drawio-exporter:5000') {
     this.exporterUrl = exporterUrl;
   }
 
