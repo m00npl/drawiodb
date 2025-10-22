@@ -2691,6 +2691,13 @@
                     // Get current diagram info
                     const title = ui.getCurrentFile()?.getTitle() || 'Untitled Diagram';
 
+                    // HTML escape utility function
+                    function escapeHtml(text) {
+                        const div = document.createElement('div');
+                        div.textContent = text;
+                        return div.innerHTML;
+                    }
+
                     // Create share dialog
                     const modal = document.createElement('div');
                     modal.className = 'arkiv-modal-overlay';
