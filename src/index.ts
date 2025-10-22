@@ -24,7 +24,7 @@ async function startServer() {
     // Rate limiting - different limits for different endpoints
     app.use('/api/diagrams/export', rateLimiter({
       windowMs: 5 * 60 * 1000, // 5 minutes
-      maxRequests: 20, // Max 20 exports per 5 min
+      maxRequests: 200, // Max 200 exports per 5 min (increased from 20)
       message: 'Too many diagram exports. Please wait a few minutes before trying again.'
     }));
 
@@ -1472,6 +1472,17 @@ async function startServer() {
           }, 400);
         }
 
+        // Check if backend has write access
+        if (!arkivService.hasWriteAccess()) {
+          // Backend is in read-only mode - config should be saved client-side
+          return c.json({
+            success: true,
+            message: 'Configuration stored locally (backend in read-only mode)',
+            config: configData,
+            readOnlyMode: true
+          });
+        }
+
         // Add wallet address to config for storage
         const configToSave = {
           ...configData,
@@ -1479,7 +1490,7 @@ async function startServer() {
           updatedAt: new Date().toISOString()
         };
 
-        // Save configuration using GolemService
+        // Save configuration using ArkivService
         const savedConfigId = await arkivService.saveUserConfig(configToSave);
 
         return c.json({
