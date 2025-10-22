@@ -3933,7 +3933,7 @@
                 showConfigDialog();
             }, null, null, '⚙️ Configuration');
 
-            // Create configureGolemNetwork function
+            // Create configureArkivNetwork function
             async function configureArkivNetwork() {
                 try {
                     // Check if MetaMask is available
@@ -4006,7 +4006,7 @@
                 }
             }
 
-            ui.actions.addAction('arkiv-network', configureGolemNetwork, null, null, '🚀 Setup Golem Network');
+            ui.actions.addAction('arkiv-network', configureArkivNetwork, null, null, '🚀 Setup Arkiv Network');
 
             // Modify the file menu to inject items in proper places
             const fileMenu = ui.menus.get('file');
