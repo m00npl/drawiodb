@@ -41,8 +41,8 @@ cp .env.example .env
 # Arkiv Configuration (Kaolin Testnet)
 GOLEM_CHAIN_ID=60138453025
 GOLEM_PRIVATE_KEY=your_private_key_here
-GOLEM_RPC_URL=https://kaolin.holesky.golemdb.io/rpc
-GOLEM_WS_URL=wss://kaolin.holesky.golemdb.io/rpc/ws
+GOLEM_RPC_URL=https://kaolin.hoodi.arkiv.network/rpc
+GOLEM_WS_URL=wss://kaolin.hoodi.arkiv.network/rpc/ws
 
 # Server Configuration
 PORT=3000

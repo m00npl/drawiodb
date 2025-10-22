@@ -79,7 +79,7 @@
         chainIdHex: '0xe0087f821',
         rpcUrl: 'https://kaolin.hoodi.arkiv.network/rpc',
         wsUrl: 'wss://kaolin.hoodi.arkiv.network/rpc/ws',
-        explorerUrl: 'https://explorer.https://kaolin.hoodi.arkiv.network/rpc',
+        explorerUrl: 'https://explorer.kaolin.hoodi.arkiv.network',
         name: 'Arkiv Kaolin Testnet'
     };
 
@@ -1373,7 +1373,7 @@
                         if (sdkAvailable) {
                             console.log('🚀 Using SDK mode for direct MetaMask signing');
                             const result = await saveToArkivViaSdk(xmlString, diagramId, title.trim(), walletAddress, encryptThisDiagram);
-                            const explorerUrl = `https://explorer.https://kaolin.hoodi.arkiv.network/rpc/entity/${result.entityKey}`;
+                            const explorerUrl = `https://explorer.kaolin.hoodi.arkiv.network/entity/${result.entityKey}`;
                             await showAlert('✅ Diagram Saved', `Diagram saved directly to Arkiv!\n\nDiagram ID: ${result.diagramId}\nEntity Key: <a href="${explorerUrl}" target="_blank" style="color: #4A90E2; text-decoration: underline;">${result.entityKey}</a>`);
                             return;
                         }
@@ -1460,7 +1460,7 @@
 
                     ui.spinner.stop();
 
-                    const explorerUrl = `https://explorer.https://kaolin.hoodi.arkiv.network/rpc/entity/${entityResult.entityKey}`;
+                    const explorerUrl = `https://explorer.kaolin.hoodi.arkiv.network/entity/${entityResult.entityKey}`;
                     await showAlert('✅ Diagram Saved', `Diagram saved directly to Arkiv!\n\nDiagram ID: ${diagramData.id}\nEntity Key: <a href="${explorerUrl}" target="_blank" style="color: #4A90E2; text-decoration: underline;">${entityResult.entityKey}</a>`);
                     return;
                 }
@@ -1472,7 +1472,7 @@
                 ui.spinner.stop();
 
                 if (result.success) {
-                    const explorerUrl = `https://explorer.https://kaolin.hoodi.arkiv.network/rpc/entity/${result.entityKey}`;
+                    const explorerUrl = `https://explorer.kaolin.hoodi.arkiv.network/entity/${result.entityKey}`;
                     await showAlert('✅ Diagram Saved', `Diagram saved to Arkiv!\n\nDiagram ID: ${result.diagramId}\nEntity Key: <a href="${explorerUrl}" target="_blank" style="color: #4A90E2; text-decoration: underline;">${result.entityKey}</a>`);
                 } else {
                     throw new Error(result.error || 'Save failed');
@@ -3080,7 +3080,7 @@
                     encryptByDefault: false,
                     encryptionPassword: '',
                     useTestnet: false,
-                    testnetRpc: 'https://rpc.https://kaolin.hoodi.arkiv.network/rpc',
+                    testnetRpc: 'https://kaolin.hoodi.arkiv.network/rpc',
                     testnetChainId: 60138453025
                 };
 
@@ -3110,7 +3110,7 @@
                         <div id="testnetConfig" style="margin-left: 20px; ${currentConfig.useTestnet ? '' : 'display: none;'}">
                             <div style="margin-bottom: 8px;">
                                 <label style="display: block; font-weight: bold; margin-bottom: 3px; font-size: 12px;">Testnet RPC URL:</label>
-                                <input type="text" id="testnetRpc" value="${currentConfig.testnetRpc || 'https://rpc.https://kaolin.hoodi.arkiv.network/rpc'}" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+                                <input type="text" id="testnetRpc" value="${currentConfig.testnetRpc || 'https://kaolin.hoodi.arkiv.network/rpc'}" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
                             </div>
                             <div style="margin-bottom: 8px;">
                                 <label style="display: block; font-weight: bold; margin-bottom: 3px; font-size: 12px;">Testnet Chain ID:</label>

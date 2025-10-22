@@ -27,8 +27,8 @@ EOF
 vault kv put kv/drawio/golem \
     private_key="REPLACE_WITH_NEW_SECURE_PRIVATE_KEY" \
     chain_id="60138453025" \
-    rpc_url="https://kaolin.holesky.golemdb.io/rpc" \
-    ws_url="wss://kaolin.holesky.golemdb.io/rpc/ws"
+    rpc_url="https://kaolin.hoodi.arkiv.network/rpc" \
+    ws_url="wss://kaolin.hoodi.arkiv.network/rpc/ws"
 
 vault kv put kv/drawio/database \
     redis_password="$(openssl rand -base64 32)" \
