@@ -914,13 +914,13 @@ export class ArkivService {
           break;
 
         case 'svg':
-          // Convert draw.io XML to SVG (basic implementation)
-          content = this.convertToSVG(diagramData.content);
+          // Convert draw.io XML to SVG using DrawIO export API
+          content = await this.convertToSVG(diagramData.content);
           contentType = 'image/svg+xml';
           break;
 
         case 'png':
-          // Generate PNG from diagram (would need proper conversion library)
+          // Generate PNG from diagram using DrawIO export API
           content = await this.convertToPNG(diagramData.content);
           contentType = 'image/png';
           break;
@@ -1001,25 +1001,70 @@ export class ArkivService {
   }
 
   // Helper methods for format conversion
-  private convertToSVG(xmlContent: string): string {
-    // Basic SVG wrapper for draw.io content
-    // In a real implementation, you'd use proper draw.io to SVG conversion
-    return `<?xml version="1.0" encoding="UTF-8"?>
+  private async convertToSVG(xmlContent: string): Promise<string> {
+    try {
+      // Use draw.io export API for server-side SVG generation
+      const exportUrl = 'https://exp.draw.io/ImageExport4/export';
+
+      const response = await fetch(exportUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          format: 'svg',
+          xml: xmlContent,
+          bg: '#ffffff',
+          scale: '1'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`DrawIO export failed: ${response.status}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      console.error('SVG conversion failed:', error);
+      // Fallback: return XML wrapped in basic SVG
+      return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
-  <foreignObject x="0" y="0" width="800" height="600">
-    <div xmlns="http://www.w3.org/1999/xhtml">
-      <p>Diagram: ${xmlContent.substring(0, 100)}...</p>
-      <p>SVG conversion requires proper draw.io rendering library</p>
-    </div>
-  </foreignObject>
+  <text x="10" y="30" font-family="Arial" font-size="16">SVG Export Error: ${(error as Error).message}</text>
+  <text x="10" y="60" font-family="Arial" font-size="12">Please use the viewer format instead.</text>
 </svg>`;
+    }
   }
 
   private async convertToPNG(xmlContent: string): Promise<Uint8Array> {
-    // Placeholder PNG (1x1 pixel)
-    // In a real implementation, you'd use proper draw.io to PNG conversion
-    const base64PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-    return Uint8Array.from(atob(base64PNG), c => c.charCodeAt(0));
+    try {
+      // Use draw.io export API for server-side PNG generation
+      const exportUrl = 'https://exp.draw.io/ImageExport4/export';
+
+      const response = await fetch(exportUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          format: 'png',
+          xml: xmlContent,
+          bg: '#ffffff',
+          scale: '2' // 2x for better quality
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`DrawIO export failed: ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      return new Uint8Array(arrayBuffer);
+    } catch (error) {
+      console.error('PNG conversion failed:', error);
+      // Fallback: return error placeholder (red 100x100 pixel)
+      const base64PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+      return Uint8Array.from(atob(base64PNG), c => c.charCodeAt(0));
+    }
   }
 
   private generateHTMLViewer(diagramData: DiagramData): string {

@@ -1215,9 +1215,9 @@ async function startServer() {
                       <h3><span>🖼️</span> Open & Edit</h3>
                     </div>
                     <div class="action-card-body">
-                      <p style="margin: 0 0 16px 0; color: #6c757d;">Open this diagram in the full draw.io editor to view and make changes.</p>
+                      <p style="margin: 0 0 16px 0; color: #6c757d;">Open this diagram in the full editor to view and make changes.</p>
                       <a href="${drawioUrl}" target="_blank" class="primary-button">
-                        <span>🖼️</span> Open in Draw.io
+                        <span>🖼️</span> Open in drawiodb.online
                       </a>
                     </div>
                   </div>
@@ -1948,7 +1948,7 @@ async function startServer() {
 
                 <div style="margin-top: 10px;">
                   <a href="/?lightbox=1&edit=_blank&title=${encodeURIComponent(result.title)}&xml=${encodeURIComponent(result.content)}" target="_blank" style="display: block; width: 100%; text-align: center; padding: 8px; background: #667eea; color: white; text-decoration: none; border-radius: 4px; font-size: 12px;">
-                    🖼️ Edit in Draw.io
+                    🖼️ Edit in drawiodb.online
                   </a>
                 </div>
               </div>
