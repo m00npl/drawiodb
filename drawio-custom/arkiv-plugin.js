@@ -126,7 +126,7 @@
 
         // Check for diagram parameter in URL
         const urlParams = new URLSearchParams(window.location.search);
-        const diagramId = urlParams.get('diagram');
+        const diagramId = urlParams.get('diagram') || urlParams.get('load');
 
         if (diagramId) {
             console.log(`🔗 Found diagram parameter: ${diagramId}, will auto-load after plugin initialization`);
