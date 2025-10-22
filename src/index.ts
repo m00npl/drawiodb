@@ -85,16 +85,8 @@ async function startServer() {
       }
     });
 
-    // In-memory storage for share tokens (in production, use a database)
-    const shareTokens = new Map<string, {
-      token: string;
-      diagramId: string;
-      createdBy: string;
-      createdAt: number;
-      expiresAt?: number;
-      isPublic: boolean;
-      accessCount: number;
-    }>();
+    // Share tokens are now stored in Arkiv blockchain
+    // Using arkivService.createShareToken, accessSharedDiagram, etc.
 
     const arkivService = new ArkivService(
       config.arkiv.chainId,
@@ -603,62 +595,7 @@ async function startServer() {
       }
     });
 
-    // Generate share token endpoint
-    app.post('/api/diagrams/:id/share', async (c) => {
-      try {
-        const diagramId = c.req.param('id');
-        const walletAddress = c.req.header('x-wallet-address');
-        const custodialId = c.req.header('x-custodial-id');
-        const { isPublic, expiresInDays } = await c.req.json();
-
-        if (!diagramId) {
-          return c.json({
-            success: false,
-            error: 'Diagram ID is required'
-          }, 400);
-        }
-
-        console.log(`Creating share token for diagram ${diagramId}, public: ${isPublic}, expires: ${expiresInDays} days`);
-
-        // Generate unique share token
-        const token = crypto.randomUUID().replace(/-/g, '');
-        const shareUrl = `${c.req.header('host') || 'localhost'}/shared/${token}`;
-
-        // Calculate expiration
-        const expiresAt = expiresInDays ?
-          Date.now() + (expiresInDays * 24 * 60 * 60 * 1000) :
-          undefined;
-
-        // Store share token in memory (in production, this would go to a database)
-        const shareData = {
-          token,
-          diagramId,
-          createdBy: walletAddress || custodialId || 'anonymous',
-          createdAt: Date.now(),
-          expiresAt,
-          isPublic,
-          accessCount: 0
-        };
-
-        shareTokens.set(token, shareData);
-        console.log('Share token created:', shareData);
-
-        return c.json({
-          success: true,
-          token,
-          shareUrl
-        });
-
-      } catch (error) {
-        console.error('Share token error:', error);
-        return c.json({
-          success: false,
-          error: (error as Error).message || 'Failed to create share token'
-        }, 500);
-      }
-    });
-
-    // Access shared diagram endpoint
+    // Legacy /shared/:token endpoint - uses arkivService for blockchain storage
     app.get('/shared/:token', async (c) => {
       try {
         const token = c.req.param('token');
@@ -668,9 +605,10 @@ async function startServer() {
           return c.text('Invalid share link', 400);
         }
 
-        // Retrieve share token data from storage
-        const shareData = shareTokens.get(token);
-        if (!shareData) {
+        // Get shared diagram from Arkiv blockchain
+        const diagramData = await arkivService.accessSharedDiagram(token);
+
+        if (!diagramData) {
           return c.html(`
             <html>
               <head>
@@ -679,114 +617,11 @@ async function startServer() {
               </head>
               <body>
                 <h1>❌ Share Link Not Found</h1>
-                <p>This share link is invalid or has been removed.</p>
-                <a href="/">Return to Draw.io</a>
+                <p>This share link is invalid, has expired, or has been removed.</p>
+                <a href="/">Return to drawiodb.online</a>
               </body>
             </html>
           `, 404);
-        }
-
-        // Check if token has expired
-        if (shareData.expiresAt && Date.now() > shareData.expiresAt) {
-          return c.html(`
-            <html>
-              <head>
-                <title>Share Link Expired</title>
-                <meta charset="utf-8">
-              </head>
-              <body>
-                <h1>⏰ Share Link Expired</h1>
-                <p>This share link has expired and is no longer accessible.</p>
-                <a href="/">Return to Draw.io</a>
-              </body>
-            </html>
-          `, 410);
-        }
-
-        // Check if private link requires authentication
-        if (!shareData.isPublic) {
-          const walletAddress = c.req.header('x-wallet-address');
-          const custodialId = c.req.header('x-custodial-id');
-
-          // For private links, user must be authenticated
-          if (!walletAddress && !custodialId) {
-            return c.html(`
-              <html>
-                <head>
-                  <title>Authentication Required</title>
-                  <meta charset="utf-8">
-                </head>
-                <body>
-                  <h1>🔒 Authentication Required</h1>
-                  <p>This is a private diagram. Please log in to view it.</p>
-                  <button onclick="window.location.href='/?auth=required'">Log in with Draw.io</button>
-                </body>
-              </html>
-            `, 401);
-          }
-        }
-
-        // Increment access count
-        shareData.accessCount++;
-        shareTokens.set(token, shareData);
-
-        // Fetch the actual diagram data
-        let diagramData;
-        try {
-          diagramData = await arkivService.importDiagram(shareData.diagramId);
-
-          if (!diagramData) {
-            return c.html(`
-              <html>
-                <head>
-                  <title>Diagram Not Found</title>
-                  <meta charset="utf-8">
-                </head>
-                <body>
-                  <h1>📄 Diagram Not Found</h1>
-                  <p>The shared diagram could not be found or has been removed.</p>
-                  <a href="/">Return to Draw.io</a>
-                </body>
-              </html>
-            `, 404);
-          }
-        } catch (diagramError) {
-          console.error('Shared diagram access error:', diagramError);
-
-          const errorMessage = (diagramError as Error).message;
-
-          // Check if the error indicates an expired diagram
-          if (errorMessage.includes('expired') || errorMessage.includes('BTL')) {
-            return c.html(`
-              <html>
-                <head>
-                  <title>Diagram Expired</title>
-                  <meta charset="utf-8">
-                </head>
-                <body>
-                  <h1>⏰ Diagram Expired</h1>
-                  <p>This shared diagram has expired and is no longer available on the blockchain.</p>
-                  <p>The diagram may have exceeded its Block Time to Live (BTL) period.</p>
-                  <a href="/">Return to Draw.io</a>
-                </body>
-              </html>
-            `, 410);
-          }
-
-          // Generic error for other import failures
-          return c.html(`
-            <html>
-              <head>
-                <title>Diagram Access Error</title>
-                <meta charset="utf-8">
-              </head>
-              <body>
-                <h1>❌ Diagram Access Error</h1>
-                <p>The shared diagram could not be loaded: ${errorMessage}</p>
-                <a href="/">Return to Draw.io</a>
-              </body>
-            </html>
-          `, 500);
         }
 
         // Handle different format requests
@@ -801,7 +636,7 @@ async function startServer() {
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
                 <meta name="description" content="Shared diagram: ${diagramData.title}">
-                <meta name="author" content="${shareData.createdBy}">
+                <meta name="author" content="${diagramData.author}">
                 <title>📊 ${diagramData.title} - Shared Diagram</title>
 
                 <!-- Open Graph tags -->
@@ -1195,18 +1030,18 @@ async function startServer() {
                   <div class="stats">
                     <div class="stat-card">
                       <span class="stat-icon">👤</span>
-                      <div class="stat-value">${shareData.createdBy}</div>
-                      <div class="stat-label">Shared by</div>
+                      <div class="stat-value">${diagramData.author}</div>
+                      <div class="stat-label">Author</div>
                     </div>
                     <div class="stat-card">
                       <span class="stat-icon">📅</span>
-                      <div class="stat-value">${new Date(shareData.createdAt).toLocaleDateString()}</div>
+                      <div class="stat-value">${new Date(diagramData.timestamp).toLocaleDateString()}</div>
                       <div class="stat-label">Created</div>
                     </div>
                     <div class="stat-card">
-                      <span class="stat-icon">👁️</span>
-                      <div class="stat-value">${shareData.accessCount}</div>
-                      <div class="stat-label">Views</div>
+                      <span class="stat-icon">📊</span>
+                      <div class="stat-value">v${diagramData.version}</div>
+                      <div class="stat-label">Version</div>
                     </div>
                   </div>
 
@@ -1367,7 +1202,7 @@ async function startServer() {
         } else {
           // Direct format access - use the diagram direct access functionality
           try {
-            const directResult = await arkivService.getDiagramDirect(shareData.diagramId, format);
+            const directResult = await arkivService.getDiagramDirect(diagramData.id, format);
 
             if (!directResult) {
               return c.json({
