@@ -139,12 +139,11 @@ server {
 
 ### Docker Configuration
 
-The application consists of two main services:
+The application runs as a single service:
 
-- **drawio-app**: Frontend application serving the DrawIO interface
-- **drawio-backend**: Backend API handling Arkiv operations
+- **drawiodb**: Unified application serving both the DrawIO interface (static files) and Backend API for Arkiv operations
 
-Both services communicate through a shared Docker network.
+The service uses port 8080 and handles all requests through a single container.
 
 ## 🏗️ Architecture
 

@@ -28,16 +28,16 @@ scrape_configs:
       - targets: ['cadvisor:8080']
 
   # DrawIO Backend metrics
-  - job_name: 'drawio-backend'
+  - job_name: 'drawiodb'
     static_configs:
-      - targets: ['drawio-golem-backend:3000']
+      - targets: ['drawiodb:3000']
     metrics_path: '/metrics'
     scrape_interval: 30s
 
   # DrawIO Frontend metrics
   - job_name: 'drawio-frontend'
     static_configs:
-      - targets: ['drawio-app:8080']
+      - targets: ['drawiodb:8080']
     metrics_path: '/metrics'
     scrape_interval: 30s
 

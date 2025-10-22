@@ -1,10 +1,10 @@
-# DrawIO Arkiv - Deployment Configuration
+# DrawIO DB - Deployment Configuration
 
 ## Docker Images & Containers
 
 ### Production Configuration
-- **Docker Image**: `moonplkr/drawio-simple:latest`
-- **Container Name**: `drawio-simple`
+- **Docker Image**: `moonplkr/drawiodb:latest`
+- **Container Name**: `drawiodb`
 - **Port**: `8900:8080`
 - **URL**: http://drawiodb.online
 
@@ -15,17 +15,17 @@ Używany konsystentnie w całym projekcie:
 
 1. **Build i push Docker image:**
 ```bash
-docker buildx build -t moonplkr/drawio-simple:latest . --push
+docker buildx build -t moonplkr/drawiodb:latest . --push
 ```
 
 2. **Deploy na serwer:**
 ```bash
-ssh ubuntu@moon.dev.golem.network "cd /home/ubuntu/projects/drawio && docker compose down && docker rmi moonplkr/drawio-simple:latest && docker compose up -d"
+ssh ubuntu@moon.dev.golem.network "cd /home/ubuntu/projects/drawio && docker compose down && docker rmi moonplkr/drawiodb:latest && docker compose up -d"
 ```
 
 3. **Sprawdź logi kontenera:**
 ```bash
-ssh ubuntu@moon.dev.golem.network "docker logs drawio-simple --tail=20"
+ssh ubuntu@moon.dev.golem.network "docker logs drawiodb --tail=20"
 ```
 
 ### Szczegółowy proces:
@@ -48,6 +48,7 @@ ssh ubuntu@moon.dev.golem.network "cd /home/ubuntu/projects/drawio && docker com
 - **Docker Compose**: `/home/ubuntu/projects/drawio/docker-compose.yml`
 
 ## IMPORTANT NOTES
-- **ALWAYS** use `moonplkr/drawio-simple:latest` - not golemdb, not golem, not app
-- **Container name** is consistently `drawio-simple`
-- **Never change** these names without updating this file first!
+- **ALWAYS** use `moonplkr/drawiodb:latest`
+- **Container name** is consistently `drawiodb`
+- **Never change** this name without updating this file first!
+- Single container serves both frontend (static files) and API endpoints

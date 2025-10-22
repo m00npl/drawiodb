@@ -1,35 +1,37 @@
-version: '3.8'
-
 services:
-  drawio-backend:
-    image: moonplkr/drawio-golem-backend:latest
-    container_name: drawio-golem-backend
-    ports:
-      - "8899:3000"
+  drawiodb:
+    image: moonplkr/drawiodb:latest
+    container_name: drawiodb
     env_file:
       - .env
     environment:
       - NODE_ENV=production
+      - PORT=8080
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
     networks:
       - moon_golem_network
-
-  drawio-app:
-    image: moonplkr/drawio-simple:latest
-    container_name: drawio-app
-    ports:
-      - "8900:8080"
-    restart: unless-stopped
-    networks:
-      - moon_golem_network
-    depends_on:
-      - drawio-backend
+    labels:
+      - "traefik.enable=true"
+      # Main domain - serves frontend and API
+      - "traefik.http.routers.drawiodb.rule=Host(`drawiodb.online`)"
+      - "traefik.http.routers.drawiodb.entrypoints=websecure"
+      - "traefik.http.routers.drawiodb.tls=true"
+      - "traefik.http.routers.drawiodb.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.drawiodb.service=drawiodb"
+      # API subdomain - same backend
+      - "traefik.http.routers.drawiodb-api.rule=Host(`api.drawiodb.online`)"
+      - "traefik.http.routers.drawiodb-api.entrypoints=websecure"
+      - "traefik.http.routers.drawiodb-api.tls=true"
+      - "traefik.http.routers.drawiodb-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.drawiodb-api.service=drawiodb"
+      # Service definition
+      - "traefik.http.services.drawiodb.loadbalancer.server.port=8080"
 
 networks:
   moon_golem_network:

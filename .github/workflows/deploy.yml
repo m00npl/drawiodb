@@ -11,8 +11,8 @@ on:
 
 env:
   REGISTRY: docker.io
-  BACKEND_IMAGE_NAME: moonplkr/drawio-golem-backend
-  FRONTEND_IMAGE_NAME: moonplkr/drawio-simple
+  BACKEND_IMAGE_NAME: moonplkr/drawiodb
+  FRONTEND_IMAGE_NAME: moonplkr/drawiodb
   DEPLOYMENT_HOST: moon.dev.golem.network
 
 jobs:
@@ -137,7 +137,7 @@ jobs:
           ssh ubuntu@${{ env.DEPLOYMENT_HOST }} '
             cd /home/ubuntu/projects/drawio
             docker compose ps
-            docker compose logs --tail=10 drawio-app drawio-golem-backend
+            docker compose logs --tail=10 drawiodb drawiodb
           '
 
       - name: Deploy with zero-downtime strategy
@@ -152,24 +152,24 @@ jobs:
             docker compose pull
 
             # Graceful restart with health checks
-            docker compose up -d --no-deps drawio-golem-backend
+            docker compose up -d --no-deps drawiodb
             sleep 30
 
             # Verify backend health
-            if ! docker exec drawio-golem-backend curl -f http://localhost:3000/health; then
+            if ! docker exec drawiodb curl -f http://localhost:3000/health; then
               echo "Backend health check failed, rolling back"
-              docker compose up -d --no-deps drawio-golem-backend
+              docker compose up -d --no-deps drawiodb
               exit 1
             fi
 
             # Update frontend
-            docker compose up -d --no-deps drawio-app
+            docker compose up -d --no-deps drawiodb
             sleep 15
 
             # Verify frontend health
-            if ! docker exec drawio-app curl -f http://localhost:8080; then
+            if ! docker exec drawiodb curl -f http://localhost:8080; then
               echo "Frontend health check failed, rolling back"
-              docker compose up -d --no-deps drawio-app
+              docker compose up -d --no-deps drawiodb
               exit 1
             fi
 

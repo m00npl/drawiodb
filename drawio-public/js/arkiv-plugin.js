@@ -81,7 +81,7 @@
         chainId: 60138453025, // Kaolin RPC actual chain ID (0xe0087f821)
         chainIdHex: '0xe0087f821',
         rpcUrl: 'https://kaolin.hoodi.arkiv.network/rpc',
-        wsUrl: 'wss://https://kaolin.hoodi.arkiv.network/rpc/rpc/ws',
+        wsUrl: 'wss://kaolin.hoodi.arkiv.network/rpc/ws',
         explorerUrl: 'https://explorer.https://kaolin.hoodi.arkiv.network/rpc',
         name: 'Arkiv Kaolin Testnet'
     };

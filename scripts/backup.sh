@@ -61,21 +61,17 @@ docker compose ps --format json > "$BACKUP_DIR/$TIMESTAMP/container_status.json"
 docker compose config > "$BACKUP_DIR/$TIMESTAMP/resolved_compose.yml"
 
 # Export container configurations
-docker inspect drawio-app > "$BACKUP_DIR/$TIMESTAMP/drawio_app_config.json" 2>/dev/null || warn "drawio-app not running"
-docker inspect drawio-golem-backend > "$BACKUP_DIR/$TIMESTAMP/drawio_backend_config.json" 2>/dev/null || warn "drawio-golem-backend not running"
+docker inspect drawiodb > "$BACKUP_DIR/$TIMESTAMP/drawiodb_config.json" 2>/dev/null || warn "drawiodb not running"
 
 # 3. Docker Images Backup
 log "Backing up Docker images..."
-docker save moonplkr/drawio-simple:latest | gzip > "$BACKUP_DIR/$TIMESTAMP/drawio_frontend_image.tar.gz" &
-docker save moonplkr/drawio-golem-backend:latest | gzip > "$BACKUP_DIR/$TIMESTAMP/drawio_backend_image.tar.gz" &
-wait
+docker save moonplkr/drawiodb:latest | gzip > "$BACKUP_DIR/$TIMESTAMP/drawiodb_image.tar.gz"
 
 # 4. Application Logs Backup
 log "Backing up application logs..."
 mkdir -p "$BACKUP_DIR/$TIMESTAMP/logs"
 
-docker logs drawio-app --timestamps > "$BACKUP_DIR/$TIMESTAMP/logs/frontend.log" 2>&1 || warn "Could not backup frontend logs"
-docker logs drawio-golem-backend --timestamps > "$BACKUP_DIR/$TIMESTAMP/logs/backend.log" 2>&1 || warn "Could not backup backend logs"
+docker logs drawiodb --timestamps > "$BACKUP_DIR/$TIMESTAMP/logs/drawiodb.log" 2>&1 || warn "Could not backup drawiodb logs"
 
 # System logs
 journalctl -u docker --since "24 hours ago" > "$BACKUP_DIR/$TIMESTAMP/logs/docker_system.log" 2>/dev/null || warn "Could not backup Docker system logs"
@@ -142,8 +138,8 @@ Components Backed Up:
 - ✅ Application configurations (docker-compose.yml, .env)
 - ✅ Custom DrawIO configurations
 - ✅ SSL certificates
-- ✅ Container configurations
-- ✅ Docker images (frontend & backend)
+- ✅ Container configuration
+- ✅ Docker image (drawiodb)
 - ✅ Application logs (24h)
 - ✅ Network configurations
 - ✅ System information

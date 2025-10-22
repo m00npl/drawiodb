@@ -23,20 +23,20 @@ async function startServer() {
 
     // Rate limiting - different limits for different endpoints
     app.use('/api/diagrams/export', rateLimiter({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      maxRequests: 10, // Max 10 exports per 15 min
-      message: 'Too many diagram exports. Please wait 15 minutes before trying again.'
+      windowMs: 5 * 60 * 1000, // 5 minutes
+      maxRequests: 20, // Max 20 exports per 5 min
+      message: 'Too many diagram exports. Please wait a few minutes before trying again.'
     }));
 
     app.use('/api/diagrams/*', rateLimiter({
       windowMs: 1 * 60 * 1000, // 1 minute
-      maxRequests: 30, // Max 30 API calls per minute
+      maxRequests: 200, // Max 200 API calls per minute (for listing, loading, etc.)
       message: 'Too many API requests. Please wait a minute before trying again.'
     }));
 
     app.use('*', rateLimiter({
       windowMs: 1 * 60 * 1000, // 1 minute
-      maxRequests: 100, // Max 100 requests per minute for all other endpoints
+      maxRequests: 500, // Max 500 requests per minute for all other endpoints
       message: 'Too many requests. Please slow down.'
     }));
 
@@ -61,7 +61,7 @@ async function startServer() {
         "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
         "img-src 'self' data: https: blob:",
         "media-src 'self' data: blob:",
-        "connect-src 'self' https://https://kaolin.hoodi.arkiv.network/rpc wss://https://kaolin.hoodi.arkiv.network/rpc https://https://kaolin.hoodi.arkiv.network/rpc wss://https://kaolin.hoodi.arkiv.network/rpc https:",
+        "connect-src 'self' https://kaolin.hoodi.arkiv.network wss://kaolin.hoodi.arkiv.network https:",
         "frame-src 'self' https://app.diagrams.net https://draw.io",
         "object-src 'none'",
         "base-uri 'self'",
@@ -806,7 +806,7 @@ async function startServer() {
 
                 <!-- Open Graph tags -->
                 <meta property="og:title" content="${diagramData.title}">
-                <meta property="og:description" content="Shared diagram from GolemDB">
+                <meta property="og:description" content="Shared diagram from Arkiv">
                 <meta property="og:type" content="website">
                 <meta property="og:url" content="${c.req.url.split('?')[0]}">
 
@@ -1189,7 +1189,7 @@ async function startServer() {
                 <div class="container">
                   <div class="header">
                     <h1>📊 ${diagramData.title}</h1>
-                    <p class="subtitle">Shared diagram from GolemDB</p>
+                    <p class="subtitle">Shared diagram from Arkiv</p>
                   </div>
 
                   <div class="stats">
@@ -1267,7 +1267,7 @@ async function startServer() {
                   </div>
 
                   <div class="powered-by">
-                    Powered by <a href="https://golemdb.io" target="_blank">GolemDB</a> •
+                    Powered by <a href="https://arkiv.network" target="_blank">Arkiv</a> •
                     Built with <a href="https://draw.io" target="_blank">draw.io</a>
                   </div>
                 </div>
@@ -2262,7 +2262,9 @@ async function startServer() {
     // Root path for Draw.io HTML
     app.get('/', async (c) => {
       const filePath = path.join(__dirname, '../public/index.html');
-      return new Response(Bun.file(filePath));
+      const file = Bun.file(filePath);
+      c.header('Content-Type', 'text/html; charset=utf-8');
+      return c.body(await file.text());
     });
 
     // 404 handler

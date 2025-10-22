@@ -165,14 +165,14 @@
             function createModal(title, message, buttons = [{ text: 'OK', style: 'primary' }]) {
                 return new Promise((resolve) => {
                     // Remove any existing modal
-                    const existingModal = document.querySelector('.arkiv-modal-overlay');
+                    const existingModal = document.querySelector('.golem-modal-overlay');
                     if (existingModal) {
                         existingModal.remove();
                     }
 
                     // Create modal
                     const modal = document.createElement('div');
-                    modal.className = 'arkiv-modal-overlay';
+                    modal.className = 'golem-modal-overlay';
                     modal.style.cssText = `
                         position: fixed;
                         top: 0;
@@ -200,9 +200,9 @@
                     `;
 
                     // Add CSS animations if not already present
-                    if (!document.querySelector('#arkiv-modal-animations')) {
+                    if (!document.querySelector('#golem-modal-animations')) {
                         const style = document.createElement('style');
-                        style.id = 'arkiv-modal-animations';
+                        style.id = 'golem-modal-animations';
                         style.textContent = `
                             @keyframes modalSlideIn {
                                 from { transform: translateY(-50px) scale(0.9); opacity: 0; }
@@ -279,14 +279,14 @@
             async function showPrompt(title, message, defaultValue = '') {
                 return new Promise((resolve) => {
                     // Remove any existing modal
-                    const existingModal = document.querySelector('.arkiv-modal-overlay');
+                    const existingModal = document.querySelector('.golem-modal-overlay');
                     if (existingModal) {
                         existingModal.remove();
                     }
 
                     // Create modal
                     const modal = document.createElement('div');
-                    modal.className = 'arkiv-modal-overlay';
+                    modal.className = 'golem-modal-overlay';
                     modal.style.cssText = `
                         position: fixed;
                         top: 0;
@@ -416,7 +416,7 @@
             }
 
             // ===== GOLEM SDK FUNCTIONS =====
-            async function initializeArkivSDK() {
+            async function initializeGolemSDK() {
                 try {
                     // First ensure all libraries are loaded
                     const librariesLoaded = await loadAllLibraries();
@@ -435,7 +435,7 @@
                     console.log('🔄 Initializing Golem SDK...');
 
                     // Check if Golem network is configured in MetaMask
-                    await ensureArkivNetwork();
+                    await ensureGolemNetwork();
 
                     const provider = window.ethereum;
                     const sdk = window.arkiv_sdk;
@@ -493,7 +493,7 @@
                 }
             }
 
-            async function ensureArkivNetwork() {
+            async function ensureGolemNetwork() {
                 try {
                     // Check if we're on the correct network
                     const currentChainId = await safeMetaMaskRequest({ method: 'eth_chainId' });
@@ -575,7 +575,7 @@
             }
 
             // Initialize our custom Arkiv SDK
-            let arkivDB = null;
+            let golemDB = null;
             let backendHasPrivateKey = false; // Track if backend can handle transactions
 
             // Frontend-only mode - no backend API needed
@@ -592,23 +592,23 @@
                 return walletConnected || backendHasPrivateKey;
             }
 
-            async function initArkivDB() {
-                if (!arkivDB) {
+            async function initGolemDB() {
+                if (!golemDB) {
                     // Ensure ethers is loaded first
                     await loadExternalLibrary('ethers');
 
-                    arkivDB = new window.GolemDB({
+                    golemDB = new window.GolemDB({
                         rpcUrl: 'https://kaolin.hoodi.arkiv.network/rpc',
                         chainId: 0xE0087F821
                     });
-                    await arkivDB.connect();
+                    await golemDB.connect();
                     console.log('🔗 Custom Arkiv SDK initialized');
                 }
-                return arkivDB;
+                return golemDB;
             }
 
             // Save diagram using our custom SDK
-            async function saveToArkivViaSdk(xmlString, diagramId, title, author, encrypted = false) {
+            async function saveToGolemDBViaSdk(xmlString, diagramId, title, author, encrypted = false) {
                 try {
                     console.log(`📦 Saving diagram via Golem Base SDK (${Math.round(xmlString.length/1024)}KB)`);
 
@@ -665,21 +665,21 @@
                 }
             }
 
-            async function loadFromArkiv(diagramId) {
+            async function loadFromGolemDB(diagramId) {
                 try {
                     const authRequired = await ensureAuthentication();
                     if (!authRequired) {
                         throw new Error('Authentication required to load diagrams');
                     }
 
-                    if (!arkivDB) {
-                        await initArkivDB();
+                    if (!golemDB) {
+                        await initGolemDB();
                     }
 
                     console.log(`📥 Loading diagram ${diagramId} from Arkiv via Custom SDK...`);
 
                     // Load the diagram using custom SDK
-                    const result = await arkivDB.loadDiagram(diagramId);
+                    const result = await golemDB.loadDiagram(diagramId);
 
                     if (!result) {
                         throw new Error('Diagram not found');
@@ -697,7 +697,7 @@
                 }
             }
 
-            async function loadFromArkivSDK(diagramId) {
+            async function loadFromGolemSDK(diagramId) {
                 try {
                     if (!arkivClient) {
                         throw new Error('Golem SDK not initialized');
@@ -734,7 +734,7 @@
                 }
             }
 
-            async function listFromArkivSDK() {
+            async function listFromGolemSDK() {
                 try {
                     if (!arkivClient) {
                         throw new Error('Golem SDK not initialized');
@@ -773,7 +773,7 @@
             // Create wallet status display
             function createWalletStatusDisplay() {
                 const statusDiv = document.createElement('div');
-                statusDiv.id = 'arkiv-wallet-status';
+                statusDiv.id = 'golem-wallet-status';
                 statusDiv.style.cssText = `
                     position: fixed;
                     bottom: 40px;
@@ -842,7 +842,7 @@
                     // Initialize SDK if in SDK mode
                     if (isSDKMode) {
                         try {
-                            await initializeArkivSDK();
+                            await initializeGolemSDK();
                             console.log('✅ Golem SDK initialized after wallet connection');
                         } catch (sdkError) {
                             console.warn('⚠️ Failed to initialize SDK after wallet connection:', sdkError);
@@ -1034,7 +1034,7 @@
 
                                 // Reinitialize SDK with new account
                                 if (isSDKMode) {
-                                    await initializeArkivSDK();
+                                    await initializeGolemSDK();
                                 }
 
                                 // Reload user config for new account
@@ -1074,8 +1074,8 @@
             }
 
             // Global functions for buttons
-            window.arkivConnectWallet = connectWallet;
-            window.arkivDisconnectWallet = disconnectWallet;
+            window.golemConnectWallet = connectWallet;
+            window.golemDisconnectWallet = disconnectWallet;
 
             // Check wallet connection
             async function showAuthChoice() {
@@ -1213,7 +1213,7 @@
                 }
 
                 // Check if user has a saved preference
-                const savedChoice = localStorage.getItem('arkiv-auth-choice');
+                const savedChoice = localStorage.getItem('golemdb-auth-choice');
                 let choice = null;
 
                 if (savedChoice) {
@@ -1224,7 +1224,7 @@
                     if (!choice) return false;
 
                     // Save user choice for future saves
-                    localStorage.setItem('arkiv-auth-choice', choice);
+                    localStorage.setItem('golemdb-auth-choice', choice);
                     console.log('💾 Saved authentication choice:', choice);
                 }
 
@@ -1305,7 +1305,7 @@
             }
 
             // Save current diagram to Arkiv with sharding support
-            const saveToArkiv = withOperationLock(async function() {
+            const saveToGolemDB = withOperationLock(async function() {
                 try {
                     if (!(await ensureAuthentication())) return;
 
@@ -1367,12 +1367,12 @@
                     // Try SDK mode first with MetaMask, fallback to backend
                     try {
                         // Ensure correct network first
-                        await ensureArkivNetwork();
+                        await ensureGolemNetwork();
 
                         const sdkAvailable = await checkSDKMode();
                         if (sdkAvailable) {
                             console.log('🚀 Using SDK mode for direct MetaMask signing');
-                            const result = await saveToArkivViaSdk(xmlString, diagramId, title.trim(), walletAddress, encryptThisDiagram);
+                            const result = await saveToGolemDBViaSdk(xmlString, diagramId, title.trim(), walletAddress, encryptThisDiagram);
                             const explorerUrl = `https://explorer.https://kaolin.hoodi.arkiv.network/rpc/entity/${result.entityKey}`;
                             await showAlert('✅ Diagram Saved', `Diagram saved directly to Arkiv!\n\nDiagram ID: ${result.diagramId}\nEntity Key: <a href="${explorerUrl}" target="_blank" style="color: #4A90E2; text-decoration: underline;">${result.entityKey}</a>`);
                             return;
@@ -1950,11 +1950,11 @@
 
                     // Try SDK mode first with MetaMask
                     try {
-                        await ensureArkivNetwork();
+                        await ensureGolemNetwork();
                         const sdkAvailable = await checkSDKMode();
                         if (sdkAvailable) {
                             console.log('🚀 Using SDK mode for loading with MetaMask');
-                            loadResult = await loadFromArkiv(selectedDiagram.id);
+                            loadResult = await loadFromGolemDB(selectedDiagram.id);
                         }
                     } catch (sdkError) {
                         console.warn('⚠️ SDK load failed, falling back to backend:', sdkError);
@@ -2673,7 +2673,7 @@
             });
 
             // Alias for storage provider integration
-            const showArkivLoadDialog = showLoadDialog;
+            const showGolemDBLoadDialog = showLoadDialog;
 
             // Share dialog function
             const showShareDialog = withOperationLock(async function() {
@@ -2693,7 +2693,7 @@
 
                     // Create share dialog
                     const modal = document.createElement('div');
-                    modal.className = 'arkiv-modal-overlay';
+                    modal.className = 'golem-modal-overlay';
                     modal.style.cssText = `
                         position: fixed;
                         top: 0;
@@ -2778,7 +2778,7 @@
                             from { transform: translateY(-50px); opacity: 0; }
                             to { transform: translateY(0); opacity: 1; }
                         }
-                        .arkiv-modal-overlay label:hover {
+                        .golem-modal-overlay label:hover {
                             border-color: #667eea !important;
                             background: #f8f9ff !important;
                         }
@@ -3165,19 +3165,19 @@
 
                         <div style="margin-bottom: 8px;">
                             <label style="display: flex; align-items: center; cursor: pointer; margin-bottom: 5px;">
-                                <input type="radio" name="authChoice" value="wallet" ${localStorage.getItem('arkiv-auth-choice') === 'wallet' ? 'checked' : ''} style="margin-right: 8px;">
+                                <input type="radio" name="authChoice" value="wallet" ${localStorage.getItem('golemdb-auth-choice') === 'wallet' ? 'checked' : ''} style="margin-right: 8px;">
                                 <span><strong>🔗 MetaMask Wallet</strong> - Connect with MetaMask wallet</span>
                             </label>
                             <div style="font-size: 10px; color: #666; margin-left: 20px; margin-bottom: 5px;">Pay gas fees directly, full control of your data</div>
 
                             <label style="display: flex; align-items: center; cursor: pointer; margin-bottom: 5px;">
-                                <input type="radio" name="authChoice" value="custodial" ${localStorage.getItem('arkiv-auth-choice') === 'custodial' ? 'checked' : ''} style="margin-right: 8px;">
+                                <input type="radio" name="authChoice" value="custodial" ${localStorage.getItem('golemdb-auth-choice') === 'custodial' ? 'checked' : ''} style="margin-right: 8px;">
                                 <span><strong>👤 Guest Mode</strong> - Quick start without wallet</span>
                             </label>
                             <div style="font-size: 10px; color: #666; margin-left: 20px; margin-bottom: 5px;">Backend handles transactions, limited storage and BTL</div>
 
                             <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="radio" name="authChoice" value="" ${!localStorage.getItem('arkiv-auth-choice') ? 'checked' : ''} style="margin-right: 8px;">
+                                <input type="radio" name="authChoice" value="" ${!localStorage.getItem('golemdb-auth-choice') ? 'checked' : ''} style="margin-right: 8px;">
                                 <span><strong>❓ Ask me each time</strong> - Show choice dialog for each save</span>
                             </label>
                             <div style="font-size: 10px; color: #666; margin-left: 20px;">No preference saved, flexible choice per save</div>
@@ -3223,10 +3223,10 @@
 
                     // Save authentication preference
                     if (selectedAuthChoice) {
-                        localStorage.setItem('arkiv-auth-choice', selectedAuthChoice);
+                        localStorage.setItem('golemdb-auth-choice', selectedAuthChoice);
                         console.log('💾 Saved auth choice:', selectedAuthChoice);
                     } else {
-                        localStorage.removeItem('arkiv-auth-choice');
+                        localStorage.removeItem('golemdb-auth-choice');
                         console.log('💾 Cleared auth choice - will ask each time');
                     }
 
@@ -3272,15 +3272,12 @@
                     }
                 });
             }
-            // Export to window for external access
-            window.showArkivConfig = showConfigDialog;
-
 
             // Open Arkiv Manager modal
             // Refresh diagram list in existing modal
             async function refreshDiagramList() {
                 try {
-                    const modal = document.querySelector('.arkiv-modal-overlay');
+                    const modal = document.querySelector('.golem-modal-overlay');
                     if (!modal) return; // No modal to refresh
 
                     console.log('🔄 Refreshing diagram list...');
@@ -3331,15 +3328,12 @@
                     await showAlert('❌ Manager Error', `Failed to load diagrams: ${error.message}`);
                 }
             }
-            // Export to window for external access
-            window.openWebManager = openWebManager;
-
 
             // Show Arkiv Manager modal (using improved design like Open dialog)
             function showManagerModal(diagrams) {
                 // Create overlay
                 const overlay = document.createElement('div');
-                overlay.className = 'arkiv-modal-overlay';
+                overlay.className = 'golem-modal-overlay';
                 overlay.style.cssText = `
                     position: fixed;
                     top: 0;
@@ -3548,9 +3542,9 @@
                 let loadResult = null;
 
                 try {
-                    if (connectionMode === 'sdk' && window.arkivSdk) {
+                    if (connectionMode === 'sdk' && window.golemSdk) {
                         console.log('🔄 Using SDK mode for loading');
-                        loadResult = await loadFromArkiv(diagramId);
+                        loadResult = await loadFromGolemDB(diagramId);
                     }
                 } catch (sdkError) {
                     console.warn('⚠️ SDK load failed, falling back to backend:', sdkError);
@@ -3594,7 +3588,7 @@
 
                     if (diagramData && diagramData.content) {
                         // Close the manager modal
-                        const modal = document.querySelector('.arkiv-modal-overlay');
+                        const modal = document.querySelector('.golem-modal-overlay');
                         if (modal) safeRemoveElement(modal);
 
                         // Load diagram into editor
@@ -3904,7 +3898,7 @@
             }
 
             // Add actions first
-            ui.actions.addAction('arkiv-wallet', async function() {
+            ui.actions.addAction('golemdb-wallet', async function() {
                 if (walletConnected) {
                     showWalletInfoModal();
                 } else {
@@ -3912,29 +3906,29 @@
                 }
             }, null, null, walletConnected ? '🔐 MetaMask Wallet (Connected)' : '🔒 Connect MetaMask Wallet');
 
-            ui.actions.addAction('arkiv-save', function() {
-                saveToArkiv();
+            ui.actions.addAction('golemdb-save', function() {
+                saveToGolemDB();
             }, null, null, '💾 Save to Arkiv');
 
-            ui.actions.addAction('arkiv-load', function() {
+            ui.actions.addAction('golemdb-load', function() {
                 showLoadDialog();
             }, null, null, '📂 Open from Arkiv');
 
-            ui.actions.addAction('arkiv-manager', function() {
+            ui.actions.addAction('golemdb-manager', function() {
                 openWebManager();
             }, null, null, '🌐 Arkiv Manager');
 
-            ui.actions.addAction('arkiv-share', function() {
+            ui.actions.addAction('golemdb-share', function() {
                 showShareDialog();
             }, null, null, '🔗 Share Diagram');
 
 
-            ui.actions.addAction('arkiv-config', function() {
+            ui.actions.addAction('golemdb-config', function() {
                 showConfigDialog();
             }, null, null, '⚙️ Configuration');
 
             // Create configureGolemNetwork function
-            async function configureArkivNetwork() {
+            async function configureGolemNetwork() {
                 try {
                     // Check if MetaMask is available
                     if (typeof window.ethereum === 'undefined') {
@@ -3992,7 +3986,7 @@
                     }
 
                     // Check SDK initialization
-                    const sdkReady = await initializeArkivSDK();
+                    const sdkReady = await initializeGolemSDK();
 
                     if (sdkReady) {
                         await showAlert('✅ Setup Complete', 'Golem Network is configured and ready!\n\n🌟 You can now save diagrams directly to Arkiv\n💰 You will pay gas fees for transactions\n🔐 Your wallet controls your data');
@@ -4006,7 +4000,7 @@
                 }
             }
 
-            ui.actions.addAction('arkiv-network', configureGolemNetwork, null, null, '🚀 Setup Golem Network');
+            ui.actions.addAction('golemdb-network', configureGolemNetwork, null, null, '🚀 Setup Golem Network');
 
             // Modify the file menu to inject items in proper places
             const fileMenu = ui.menus.get('file');
@@ -4032,7 +4026,7 @@
                         )) {
                             // Add our save option after the first save-related item
                             originalAddItem.call(this, '💾 Save to Arkiv', null, function() {
-                                ui.actions.get('arkiv-save').funct();
+                                ui.actions.get('golemdb-save').funct();
                             }, parent);
                             saveGroupFound = true;
                         }
@@ -4045,7 +4039,7 @@
                         )) {
                             // Add our open option after the first open-related item
                             originalAddItem.call(this, '📂 Open from Arkiv', null, function() {
-                                ui.actions.get('arkiv-load').funct();
+                                ui.actions.get('golemdb-load').funct();
                             }, parent);
                             openGroupFound = true;
                         }
@@ -4064,7 +4058,7 @@
 
                     // Add wallet connection item
                     menu.addItem('🔐 MetaMask Wallet', null, function() {
-                        ui.actions.get('arkiv-wallet').funct();
+                        ui.actions.get('golemdb-wallet').funct();
                     }, parent);
 
                     menu.addSeparator(parent);
@@ -4072,14 +4066,14 @@
                     // Add save item if not already injected
                     if (!saveGroupFound) {
                         menu.addItem('💾 Save to Arkiv', null, function() {
-                            ui.actions.get('arkiv-save').funct();
+                            ui.actions.get('golemdb-save').funct();
                         }, parent);
                     }
 
                     // Add load item if not already injected
                     if (!openGroupFound) {
                         menu.addItem('📂 Open from Arkiv', null, function() {
-                            ui.actions.get('arkiv-load').funct();
+                            ui.actions.get('golemdb-load').funct();
                         }, parent);
                     }
 
@@ -4101,15 +4095,15 @@
 
                     // Add Arkiv options to popup menu
                     menu.addItem('💾 Save to Arkiv', null, function() {
-                        ui.actions.get('arkiv-save').funct();
+                        ui.actions.get('golemdb-save').funct();
                     });
 
                     menu.addItem('📂 Open from Arkiv', null, function() {
-                        ui.actions.get('arkiv-load').funct();
+                        ui.actions.get('golemdb-load').funct();
                     });
 
                     menu.addItem('🔗 Share Diagram', null, function() {
-                        ui.actions.get('arkiv-share').funct();
+                        ui.actions.get('golemdb-share').funct();
                     });
 
                     console.log('✅ Arkiv popup menu items added!');
@@ -4159,7 +4153,7 @@
                             // Initialize SDK if in SDK mode
                             if (isSDKMode) {
                                 try {
-                                    await initializeArkivSDK();
+                                    await initializeGolemSDK();
                                     console.log('✅ Golem SDK initialized after auto-connect');
                                 } catch (sdkError) {
                                     console.warn('⚠️ Failed to initialize SDK after auto-connect:', sdkError);
@@ -4787,7 +4781,7 @@
             setTimeout(() => {
                 try {
                     // Create Arkiv menu
-                    ui.menus.put('arkiv', new Menu(function(menu, parent) {
+                    ui.menus.put('golemdb', new Menu(function(menu, parent) {
                         menu.addItem('🌐 File Manager', null, function() {
                             openWebManager();
                         }, parent);
@@ -4807,7 +4801,7 @@
                         menu.addSeparator(parent);
 
                         menu.addItem('💾 Save to Arkiv', null, function() {
-                            saveToArkiv();
+                            saveToGolemDB();
                         }, parent);
 
                         menu.addItem('📂 Open from Arkiv', null, function() {
@@ -4832,9 +4826,9 @@
                         );
 
                         // Create Arkiv menu button
-                        const arkivMenuItem = document.createElement('div');
-                        arkivMenuItem.className = 'geMenuItem';
-                        arkivMenuItem.style.cssText = `
+                        const golemMenuItem = document.createElement('div');
+                        golemMenuItem.className = 'geMenuItem';
+                        golemMenuItem.style.cssText = `
                             display: inline-block;
                             padding: 4px 8px;
                             cursor: pointer;
@@ -4845,24 +4839,24 @@
                             font-size: inherit;
                             color: inherit;
                         `;
-                        arkivMenuItem.textContent = 'Arkiv';
+                        golemMenuItem.textContent = 'Arkiv';
 
                         // Add hover effects
-                        arkivMenuItem.onmouseenter = () => {
-                            arkivMenuItem.style.background = 'rgba(0,0,0,0.1)';
+                        golemMenuItem.onmouseenter = () => {
+                            golemMenuItem.style.background = 'rgba(0,0,0,0.1)';
                         };
-                        arkivMenuItem.onmouseleave = () => {
-                            arkivMenuItem.style.background = 'transparent';
+                        golemMenuItem.onmouseleave = () => {
+                            golemMenuItem.style.background = 'transparent';
                         };
 
                         // Add click handler to show menu
-                        arkivMenuItem.onclick = (e) => {
+                        golemMenuItem.onclick = (e) => {
                             e.preventDefault();
                             e.stopPropagation();
 
                             // Create dropdown menu
-                            const arkivMenu = ui.menus.get('arkiv');
-                            if (arkivMenu && arkivMenu.funct) {
+                            const golemMenu = ui.menus.get('golemdb');
+                            if (golemMenu && golemMenu.funct) {
                                 const menuDiv = document.createElement('div');
                                 menuDiv.className = 'geMenubarMenu';
                                 menuDiv.style.cssText = `
@@ -4877,7 +4871,7 @@
                                 `;
 
                                 // Position menu below button
-                                const rect = arkivMenuItem.getBoundingClientRect();
+                                const rect = golemMenuItem.getBoundingClientRect();
                                 menuDiv.style.left = rect.left + 'px';
                                 menuDiv.style.top = (rect.bottom + 2) + 'px';
 
@@ -4924,14 +4918,14 @@
                                 };
 
                                 // Build menu
-                                arkivMenu.funct(menuObj, null);
+                                golemMenu.funct(menuObj, null);
 
                                 // Add to document
                                 document.body.appendChild(menuDiv);
 
                                 // Close on click outside
                                 const closeMenu = (e) => {
-                                    if (!menuDiv.contains(e.target) && !arkivMenuItem.contains(e.target)) {
+                                    if (!menuDiv.contains(e.target) && !golemMenuItem.contains(e.target)) {
                                         safeRemoveElement(menuDiv);
                                         document.removeEventListener('click', closeMenu);
                                     }
@@ -4942,9 +4936,9 @@
 
                         // Insert before Help menu or at the end
                         if (helpMenu) {
-                            menubar.insertBefore(arkivMenuItem, helpMenu);
+                            menubar.insertBefore(golemMenuItem, helpMenu);
                         } else {
-                            menubar.appendChild(arkivMenuItem);
+                            menubar.appendChild(golemMenuItem);
                         }
 
                         console.log('📂 Arkiv menu added to menubar');
@@ -5039,14 +5033,14 @@
             // Register Arkiv as a storage provider using DrawIO's native storage system
             if (typeof App !== 'undefined') {
                 // Define Arkiv mode constant
-                App.MODE_GOLEMDB = 'arkiv';
+                App.MODE_GOLEMDB = 'golemdb';
 
                 // Add Arkiv to storage providers
                 if (ui.editor && ui.editor.addStorageProvider) {
-                    ui.editor.addStorageProvider('arkiv', {
+                    ui.editor.addStorageProvider('golemdb', {
                         displayName: '🔗 Arkiv',
                         icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuNzMgOC4yOEwyMSA2TDE4Ljc3IDEwLjI3TDIyIDEyTDE4Ljc3IDEzLjczTDIxIDE4TDEzLjczIDE1LjcyTDEyIDIyTDEwLjI3IDE1LjcyTDMgMThMNS4yMyAxMy43M0wyIDEyTDUuMjMgMTAuMjdMMyA2TDEwLjI3IDguMjhMMTIgMloiIHN0cm9rZT0iIzE2YTM0YSIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSIjZjBmZGY0Ii8+Cjwvc3ZnPgo=',
-                        save: saveToArkiv,
+                        save: saveToGolemDB,
                         load: showGolemDBLoadDialog
                     });
                     console.log('✅ Arkiv registered as storage provider');
@@ -5082,8 +5076,8 @@
 
                                     if (storageContainer) {
                                         // Create Arkiv storage option
-                                        const arkivBtn = document.createElement('div');
-                                        arkivBtn.style.cssText = `
+                                        const golemBtn = document.createElement('div');
+                                        golemBtn.style.cssText = `
                                             display: inline-block;
                                             margin: 10px;
                                             padding: 20px;
@@ -5096,33 +5090,33 @@
                                             transition: all 0.2s;
                                         `;
 
-                                        arkivBtn.innerHTML = `
+                                        golemBtn.innerHTML = `
                                             <div style="font-size: 24px; margin-bottom: 8px;">🔗</div>
                                             <div style="font-size: 12px; font-weight: bold; color: #16a34a;">Arkiv</div>
                                         `;
 
-                                        arkivBtn.onmouseenter = () => {
-                                            arkivBtn.style.background = '#dcfce7';
-                                            arkivBtn.style.borderColor = '#15803d';
+                                        golemBtn.onmouseenter = () => {
+                                            golemBtn.style.background = '#dcfce7';
+                                            golemBtn.style.borderColor = '#15803d';
                                         };
 
-                                        arkivBtn.onmouseleave = () => {
-                                            arkivBtn.style.background = '#f0fdf4';
-                                            arkivBtn.style.borderColor = '#16a34a';
+                                        golemBtn.onmouseleave = () => {
+                                            golemBtn.style.background = '#f0fdf4';
+                                            golemBtn.style.borderColor = '#16a34a';
                                         };
 
-                                        arkivBtn.onclick = () => {
+                                        golemBtn.onclick = () => {
                                             // Close the storage dialog
                                             const closeBtn = container.querySelector('button[title*="Close"], button[title*="Cancel"]');
                                             if (closeBtn) closeBtn.click();
 
                                             // Trigger Arkiv save
                                             setTimeout(() => {
-                                                saveToArkiv();
+                                                saveToGolemDB();
                                             }, 100);
                                         };
 
-                                        storageContainer.appendChild(arkivBtn);
+                                        storageContainer.appendChild(golemBtn);
                                         console.log('✅ Added Arkiv option to Storage dialog');
                                     }
                                 }
@@ -5152,17 +5146,17 @@
                                         )
                                     )) {
                                         // Add Arkiv option
-                                        const arkivOption = document.createElement('option');
-                                        arkivOption.value = 'arkiv';
-                                        arkivOption.text = '🔗 Arkiv';
-                                        select.appendChild(arkivOption);
+                                        const golemOption = document.createElement('option');
+                                        golemOption.value = 'golemdb';
+                                        golemOption.text = '🔗 Arkiv';
+                                        select.appendChild(golemOption);
 
                                         // Add event listener for when Arkiv is selected
                                         select.addEventListener('change', function() {
-                                            if (this.value === 'arkiv') {
+                                            if (this.value === 'golemdb') {
                                                 // Trigger Arkiv save
                                                 setTimeout(() => {
-                                                    saveToArkiv();
+                                                    saveToGolemDB();
                                                     // Close the export dialog
                                                     const closeButtons = document.querySelectorAll('button');
                                                     for (let btn of closeButtons) {
@@ -5205,14 +5199,14 @@
                                         )
                                     )) {
                                         // Add Arkiv option
-                                        const arkivOption = document.createElement('option');
-                                        arkivOption.value = 'arkiv';
-                                        arkivOption.text = '🔗 Arkiv';
-                                        select.appendChild(arkivOption);
+                                        const golemOption = document.createElement('option');
+                                        golemOption.value = 'golemdb';
+                                        golemOption.text = '🔗 Arkiv';
+                                        select.appendChild(golemOption);
 
                                         // Add event listener for when Arkiv is selected
                                         select.addEventListener('change', function() {
-                                            if (this.value === 'arkiv') {
+                                            if (this.value === 'golemdb') {
                                                 // Trigger Arkiv open
                                                 setTimeout(() => {
                                                     showLoadDialog();
@@ -5247,7 +5241,7 @@
 
     // Export functions globally for external access - wait for DrawIO to be ready
     function exportGlobalFunctions() {
-        window.saveToArkiv = async function(title, encrypted = false) {
+        window.saveToGolemDB = async function(title, encrypted = false) {
         const authenticated = await ensureAuthentication();
         if (!authenticated) {
             await showAlert('❌ Authentication Required', 'Please authenticate first.');
@@ -5264,20 +5258,20 @@
 
         try {
             console.log('💾 Saving to Arkiv via global function...');
-            // This is a simple wrapper - actual implementation is in the main saveToArkiv function
-            // For now, just show an alert to use the Arkiv menu
-            await showAlert('💡 Use Arkiv Menu', 'Please use File > Arkiv > Save to save your diagram.');
+            await saveToGolemDBWithAuth(xmlString, null, title, encrypted);
         } catch (error) {
             console.error('Save failed:', error);
             await showAlert('❌ Save Failed', error.message);
         }
     };
 
+    window.openWebManager = openWebManager;
+    window.showGolemConfig = showConfigDialog;
 
         console.log('🌐 Global functions exported:', {
-            saveToArkiv: typeof window.saveToArkiv,
+            saveToGolemDB: typeof window.saveToGolemDB,
             openWebManager: typeof window.openWebManager,
-            showArkivConfig: typeof window.showArkivConfig
+            showGolemConfig: typeof window.showGolemConfig
         });
     }
 
@@ -5292,9 +5286,9 @@
         exportAttempts++;
 
         // Check if all functions are properly exported
-        const allExported = typeof window.saveToArkiv === 'function' &&
+        const allExported = typeof window.saveToGolemDB === 'function' &&
                            typeof window.openWebManager === 'function' &&
-                           typeof window.showArkivConfig === 'function';
+                           typeof window.showGolemConfig === 'function';
 
         if (allExported) {
             console.log('✅ All global functions confirmed exported');

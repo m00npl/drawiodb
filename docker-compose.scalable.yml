@@ -20,7 +20,7 @@ services:
   # Load balancer for backend services
   backend-lb:
     image: nginx:alpine
-    container_name: drawio-backend-lb
+    container_name: drawiodb-lb
     restart: unless-stopped
     volumes:
       - ./nginx/backend-lb.conf:/etc/nginx/nginx.conf:ro
@@ -28,8 +28,8 @@ services:
       - backend_network
       - frontend_network
     depends_on:
-      - drawio-backend-1
-      - drawio-backend-2
+      - drawiodb-1
+      - drawiodb-2
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.drawio-api.rule=Host(`api.drawiodb.online`)"
@@ -38,9 +38,9 @@ services:
       - "traefik.http.services.drawio-api.loadbalancer.server.port=80"
 
   # Backend service instances
-  drawio-backend-1:
-    image: moonplkr/drawio-golem-backend:latest
-    container_name: drawio-golem-backend-1
+  drawiodb-1:
+    image: moonplkr/drawiodb:latest
+    container_name: drawiodb-1
     env_file:
       - .env
     environment:
@@ -59,9 +59,9 @@ services:
     depends_on:
       - redis
 
-  drawio-backend-2:
-    image: moonplkr/drawio-golem-backend:latest
-    container_name: drawio-golem-backend-2
+  drawiodb-2:
+    image: moonplkr/drawiodb:latest
+    container_name: drawiodb-2
     env_file:
       - .env
     environment:
@@ -81,18 +81,18 @@ services:
       - redis
 
   # Frontend service instances with load balancing
-  drawio-app-1:
-    image: moonplkr/drawio-simple:latest
-    container_name: drawio-app-1
+  drawiodb-1:
+    image: moonplkr/drawiodb:latest
+    container_name: drawiodb-1
     restart: unless-stopped
     networks:
       - frontend_network
     depends_on:
       - backend-lb
 
-  drawio-app-2:
-    image: moonplkr/drawio-simple:latest
-    container_name: drawio-app-2
+  drawiodb-2:
+    image: moonplkr/drawiodb:latest
+    container_name: drawiodb-2
     restart: unless-stopped
     networks:
       - frontend_network
@@ -109,8 +109,8 @@ services:
     networks:
       - frontend_network
     depends_on:
-      - drawio-app-1
-      - drawio-app-2
+      - drawiodb-1
+      - drawiodb-2
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.drawio.rule=Host(`drawiodb.online`)"

@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  drawio-backend:
-    image: moonplkr/drawio-golem-backend:latest
-    container_name: drawio-golem-backend
+  drawiodb:
+    image: moonplkr/drawiodb:latest
+    container_name: drawiodb
     env_file:
       - .env
     environment:
@@ -28,14 +28,14 @@ services:
       - "traefik.http.middlewares.api-rate-limit.ratelimit.average=10"
       - "traefik.http.routers.drawio-api.middlewares=api-rate-limit"
 
-  drawio-app:
-    image: moonplkr/drawio-simple:latest
-    container_name: drawio-app
+  drawiodb:
+    image: moonplkr/drawiodb:latest
+    container_name: drawiodb
     restart: unless-stopped
     networks:
       - frontend_network
     depends_on:
-      - drawio-backend
+      - drawiodb
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.drawio.rule=Host(`drawiodb.online`)"

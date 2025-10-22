@@ -1,5 +1,5 @@
 {
-  "name": "drawio-golem-backend",
+  "name": "drawiodb",
   "version": "1.0.0",
   "description": "Backend service for importing/exporting diagrams from/to Arkiv",
   "main": "dist/index.js",

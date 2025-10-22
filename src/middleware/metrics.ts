@@ -31,14 +31,14 @@ const activeConnections = new promClient.Gauge({
   help: 'Number of active HTTP connections'
 });
 
-const golemDbOperations = new promClient.Counter({
-  name: 'golem_db_operations_total',
+const arkivDbOperations = new promClient.Counter({
+  name: 'arkiv_db_operations_total',
   help: 'Total number of Arkiv operations',
   labelNames: ['operation', 'status']
 });
 
-const golemDbOperationDuration = new promClient.Histogram({
-  name: 'golem_db_operation_duration_seconds',
+const arkivDbOperationDuration = new promClient.Histogram({
+  name: 'arkiv_db_operation_duration_seconds',
   help: 'Duration of Arkiv operations in seconds',
   labelNames: ['operation'],
   buckets: [0.1, 0.5, 1, 2, 5, 10, 30]
@@ -54,8 +54,8 @@ const rateLimitHits = new promClient.Counter({
 register.registerMetric(httpRequestDuration);
 register.registerMetric(httpRequestsTotal);
 register.registerMetric(activeConnections);
-register.registerMetric(golemDbOperations);
-register.registerMetric(golemDbOperationDuration);
+register.registerMetric(arkivDbOperations);
+register.registerMetric(arkivDbOperationDuration);
 register.registerMetric(rateLimitHits);
 
 // Middleware to collect HTTP metrics
@@ -86,12 +86,12 @@ export function metricsMiddleware() {
 }
 
 // Function to record Arkiv operations
-export function recordGolemDbOperation(operation: string, duration: number, success: boolean) {
-  golemDbOperations
+export function recordArkivDbOperation(operation: string, duration: number, success: boolean) {
+  arkivDbOperations
     .labels(operation, success ? 'success' : 'error')
     .inc();
 
-  golemDbOperationDuration
+  arkivDbOperationDuration
     .labels(operation)
     .observe(duration);
 }

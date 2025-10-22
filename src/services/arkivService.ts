@@ -2027,8 +2027,8 @@ export class ArkivService {
   }
 
   public async shutdown() {
-    console.log('🛑 Shutting down GolemService...');
+    console.log('🛑 Shutting down ArkivService...');
     await this.retryQueue.shutdown();
-    console.log('✅ GolemService shutdown complete');
+    console.log('✅ ArkivService shutdown complete');
   }
 }

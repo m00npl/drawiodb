@@ -5,7 +5,7 @@
 	      'default-src \'self\'',
 	      'script-src \'self\' https://storage.googleapis.com https://apis.google.com https://docs.google.com https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.ethers.io https://unpkg.com https://cdn.jsdelivr.net \'unsafe-inline\'',
 	      'script-src-attr \'unsafe-inline\'',
-	      'connect-src \'self\' http://localhost:8899 https://https://kaolin.hoodi.arkiv.network/rpc wss://https://kaolin.hoodi.arkiv.network/rpc https://https://kaolin.hoodi.arkiv.network/rpc wss://https://kaolin.hoodi.arkiv.network/rpc https://drawiodb.online https://unpkg.com https://*.dropboxapi.com https://api.trello.com https://api.github.com https://raw.githubusercontent.com https://*.googleapis.com https://*.googleusercontent.com https://graph.microsoft.com https://*.1drv.com https://*.sharepoint.com https://gitlab.com https://*.google.com https://fonts.gstatic.com https://fonts.googleapis.com',
+	      'connect-src \'self\' http://localhost:8899 https://kaolin.hoodi.arkiv.network wss://kaolin.hoodi.arkiv.network https://drawiodb.online https://unpkg.com https://*.dropboxapi.com https://api.trello.com https://api.github.com https://raw.githubusercontent.com https://*.googleapis.com https://*.googleusercontent.com https://graph.microsoft.com https://*.1drv.com https://*.sharepoint.com https://gitlab.com https://*.google.com https://fonts.gstatic.com https://fonts.googleapis.com',
 	      'img-src * data:',
 	      'media-src * data:',
 	      'font-src * about:',

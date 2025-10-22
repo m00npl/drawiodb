@@ -16,7 +16,7 @@ export const config: AppConfig = {
     chainId: process.env.ARKIV_CHAIN_ID || process.env.GOLEM_CHAIN_ID || '60138453025',
     privateKey: process.env.ARKIV_PRIVATE_KEY || process.env.GOLEM_PRIVATE_KEY,
     rpcUrl: process.env.ARKIV_RPC_URL || process.env.GOLEM_RPC_URL || 'https://kaolin.hoodi.arkiv.network/rpc',
-    wsUrl: process.env.ARKIV_WS_URL || process.env.GOLEM_WS_URL || 'wss://https://kaolin.hoodi.arkiv.network/rpc/rpc/ws'
+    wsUrl: process.env.ARKIV_WS_URL || process.env.GOLEM_WS_URL || 'wss://kaolin.hoodi.arkiv.network/rpc/ws'
   }
 };
 

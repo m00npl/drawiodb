@@ -61,8 +61,8 @@ scrape_configs:
       - targets:
           - localhost
         labels:
-          job: drawio-app
-          __path__: /var/lib/docker/containers/*drawio-app*/*log
+          job: drawiodb
+          __path__: /var/lib/docker/containers/*drawiodb*/*log
     pipeline_stages:
       - json:
           expressions:
@@ -74,13 +74,13 @@ scrape_configs:
       - output:
           source: output
 
-  - job_name: drawio-backend
+  - job_name: drawiodb
     static_configs:
       - targets:
           - localhost
         labels:
-          job: drawio-backend
-          __path__: /var/lib/docker/containers/*drawio-golem-backend*/*log
+          job: drawiodb
+          __path__: /var/lib/docker/containers/*drawiodb*/*log
     pipeline_stages:
       - json:
           expressions:
