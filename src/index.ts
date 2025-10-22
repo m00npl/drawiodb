@@ -24,19 +24,19 @@ async function startServer() {
     // Rate limiting - different limits for different endpoints
     app.use('/api/diagrams/export', rateLimiter({
       windowMs: 5 * 60 * 1000, // 5 minutes
-      maxRequests: 200, // Max 200 exports per 5 min (increased from 20)
+      maxRequests: 1000, // Max 1000 exports per 5 min (very permissive for development)
       message: 'Too many diagram exports. Please wait a few minutes before trying again.'
     }));
 
     app.use('/api/diagrams/*', rateLimiter({
       windowMs: 1 * 60 * 1000, // 1 minute
-      maxRequests: 200, // Max 200 API calls per minute (for listing, loading, etc.)
+      maxRequests: 1000, // Max 1000 API calls per minute
       message: 'Too many API requests. Please wait a minute before trying again.'
     }));
 
     app.use('*', rateLimiter({
       windowMs: 1 * 60 * 1000, // 1 minute
-      maxRequests: 500, // Max 500 requests per minute for all other endpoints
+      maxRequests: 2000, // Max 2000 requests per minute for all other endpoints
       message: 'Too many requests. Please slow down.'
     }));
 
