@@ -881,6 +881,7 @@
             let lastWalletAddress = null;
             let encryptionEnabled = false;
             let defaultEncryptionPassword = null;
+            let lastSavedContent = null; // For auto-save tracking
 
             // Helper function for MetaMask requests with circuit breaker handling
             async function safeMetaMaskRequest(request) {
@@ -1374,6 +1375,10 @@
                             console.log('🚀 Using SDK mode for direct MetaMask signing');
                             const result = await saveToArkivViaSdk(xmlString, diagramId, title.trim(), walletAddress, encryptThisDiagram);
                             const explorerUrl = `https://explorer.kaolin.hoodi.arkiv.network/entity/${result.entityKey}`;
+
+                            // Update last saved content for auto-save tracking
+                            lastSavedContent = mxUtils.getXml(ui.editor.getGraphXml());
+
                             await showAlert('✅ Diagram Saved', `Diagram saved directly to Arkiv!\n\nDiagram ID: ${result.diagramId}\nEntity Key: <a href="${explorerUrl}" target="_blank" style="color: #4A90E2; text-decoration: underline;">${result.entityKey}</a>`);
                             return;
                         }
@@ -1460,6 +1465,9 @@
 
                     ui.spinner.stop();
 
+                    // Update last saved content for auto-save tracking
+                    lastSavedContent = mxUtils.getXml(ui.editor.getGraphXml());
+
                     const explorerUrl = `https://explorer.kaolin.hoodi.arkiv.network/entity/${entityResult.entityKey}`;
                     await showAlert('✅ Diagram Saved', `Diagram saved directly to Arkiv!\n\nDiagram ID: ${diagramData.id}\nEntity Key: <a href="${explorerUrl}" target="_blank" style="color: #4A90E2; text-decoration: underline;">${entityResult.entityKey}</a>`);
                     return;
@@ -1472,6 +1480,9 @@
                 ui.spinner.stop();
 
                 if (result.success) {
+                    // Update last saved content for auto-save tracking
+                    lastSavedContent = mxUtils.getXml(ui.editor.getGraphXml());
+
                     const explorerUrl = `https://explorer.kaolin.hoodi.arkiv.network/entity/${result.entityKey}`;
                     await showAlert('✅ Diagram Saved', `Diagram saved to Arkiv!\n\nDiagram ID: ${result.diagramId}\nEntity Key: <a href="${explorerUrl}" target="_blank" style="color: #4A90E2; text-decoration: underline;">${result.entityKey}</a>`);
                 } else {
@@ -1536,6 +1547,9 @@
                     }
 
                     ui.spinner.stop();
+
+                    // Update last saved content for auto-save tracking
+                    lastSavedContent = mxUtils.getXml(ui.editor.getGraphXml());
 
                     await showAlert('✅ Large Diagram Saved', `Large diagram saved to Arkiv!\n\nDiagram ID: ${diagramId}\nChunks: ${chunks.length}\nTotal size: ${Math.round(new Blob([xmlString]).size/1024)}KB`);
 
@@ -4322,6 +4336,214 @@
             console.log('🚀 ========================================');
 
             // Auto-connect disabled - user will be prompted on first save attempt
+
+            // Auto-save functionality
+            let autoSaveTimeout = null;
+
+            // Debounce function to prevent too frequent saves
+            function debounce(func, wait) {
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(autoSaveTimeout);
+                        func(...args);
+                    };
+                    clearTimeout(autoSaveTimeout);
+                    autoSaveTimeout = setTimeout(later, wait);
+                };
+            }
+
+            // Silent auto-save function (no prompts, no alerts)
+            async function silentSaveToArkiv() {
+                try {
+                    if (!(await ensureAuthentication())) {
+                        console.log('⏸️ Auto-save skipped: authentication failed');
+                        return false;
+                    }
+
+                    // Use auto-generated title or last used title
+                    const title = ui.getCurrentFile()?.getTitle() || `Auto-saved ${new Date().toLocaleString()}`;
+
+                    const xml = ui.editor.getGraphXml();
+                    let xmlString = mxUtils.getXml(xml);
+
+                    // Use default encryption settings from config
+                    const encryptThisDiagram = encryptionEnabled && userConfig?.encryptByDefault;
+                    const encryptionPassword = encryptThisDiagram ? defaultEncryptionPassword : null;
+
+                    // Encrypt if enabled
+                    if (encryptThisDiagram && encryptionPassword) {
+                        try {
+                            xmlString = encryptContent(xmlString, encryptionPassword);
+                            console.log('🔐 Auto-save: diagram encrypted');
+                        } catch (encryptError) {
+                            console.error('❌ Auto-save encryption failed:', encryptError);
+                            return false;
+                        }
+                    }
+
+                    // Validate size
+                    try {
+                        validateDocumentSize(xmlString);
+                    } catch (sizeError) {
+                        console.error('❌ Auto-save: document too large:', sizeError.message);
+                        return false;
+                    }
+
+                    const diagramId = generateDiagramId();
+                    const sizeInBytes = new Blob([xmlString]).size;
+
+                    // Try SDK mode first
+                    try {
+                        await ensureArkivNetwork();
+                        const sdkAvailable = await checkSDKMode();
+                        if (sdkAvailable) {
+                            const result = await saveToArkivViaSdk(xmlString, diagramId, title.trim(), walletAddress, encryptThisDiagram);
+                            console.log(`✅ Auto-save completed (SDK): ${result.diagramId}`);
+                            return true;
+                        }
+                    } catch (sdkError) {
+                        console.warn('⚠️ Auto-save SDK failed, trying backend:', sdkError.message);
+                    }
+
+                    // Fallback to backend - direct API call without UI spinner/alerts
+                    const saveData = {
+                        title: title.trim(),
+                        author: walletAddress,
+                        content: xmlString,
+                        diagramId,
+                        encrypted: encryptThisDiagram
+                    };
+
+                    if (encryptThisDiagram && encryptionPassword) {
+                        saveData.encryptionPassword = encryptionPassword;
+                    }
+
+                    const response = await fetchWithTimeout(`${BACKEND_URL}/api/diagrams/export`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Wallet-Address': walletAddress
+                        },
+                        body: JSON.stringify(saveData)
+                    }, 30000);
+
+                    if (!response.ok) {
+                        console.error(`❌ Auto-save: server error ${response.status}`);
+                        return false;
+                    }
+
+                    const result = await response.json();
+
+                    // Handle frontend transaction requirement (no backend private key)
+                    if (result.requiresFrontendTransaction) {
+                        if (!arkivClient) {
+                            console.error('❌ Auto-save: MetaMask not connected');
+                            return false;
+                        }
+
+                        const diagramData = result.diagramData;
+                        const entityResult = await arkivClient.createEntity(
+                            JSON.stringify(diagramData),
+                            {
+                                type: 'diagram',
+                                title: diagramData.title,
+                                author: diagramData.author,
+                                version: String(diagramData.version),
+                                timestamp: String(diagramData.timestamp),
+                                diagramId: diagramData.id
+                            }
+                        );
+                        console.log(`✅ Auto-save completed (MetaMask): ${entityResult.entityKey}`);
+                        return true;
+                    }
+
+                    if (result.success) {
+                        console.log(`✅ Auto-save completed (backend): ${result.diagramId} -> ${result.entityKey}`);
+                        return true;
+                    } else {
+                        console.error(`❌ Auto-save failed: ${result.error || 'Unknown error'}`);
+                        return false;
+                    }
+
+                } catch (error) {
+                    console.error('❌ Auto-save failed:', error.message);
+                    return false;
+                }
+            }
+
+            // Auto-save function with debounce
+            const performAutoSave = debounce(async function() {
+                try {
+                    // Check if auto-save is enabled
+                    if (!userConfig || !userConfig.autoSave) {
+                        return;
+                    }
+
+                    // Check if wallet is connected
+                    if (!walletConnected && !isSDKMode) {
+                        console.log('⏸️ Auto-save skipped: wallet not connected');
+                        return;
+                    }
+
+                    // Check if there's content to save
+                    const graph = ui.editor.graph;
+                    if (!graph || graph.getModel().root.getChildCount() === 0) {
+                        console.log('⏸️ Auto-save skipped: no diagram content');
+                        return;
+                    }
+
+                    // Get current diagram content
+                    const xml = mxUtils.getXml(ui.editor.getGraphXml());
+
+                    // Skip if content hasn't changed
+                    if (xml === lastSavedContent) {
+                        console.log('⏸️ Auto-save skipped: no changes detected');
+                        return;
+                    }
+
+                    console.log('💾 Auto-saving diagram...');
+
+                    // Use silent save (no prompts, no alerts)
+                    const success = await silentSaveToArkiv();
+
+                    if (success) {
+                        // Update last saved content only on success
+                        lastSavedContent = xml;
+                        console.log('✅ Auto-save completed successfully');
+                    }
+
+                } catch (error) {
+                    console.error('❌ Auto-save error:', error);
+                }
+            }, 30000); // Wait 30 seconds after last change before auto-saving
+
+            // Setup auto-save listener on graph changes
+            function setupAutoSave() {
+                try {
+                    const graph = ui.editor.graph;
+                    if (!graph) {
+                        console.warn('⚠️ Cannot setup auto-save: graph not available');
+                        return;
+                    }
+
+                    // Listen to model changes
+                    const model = graph.getModel();
+                    model.addListener(mxEvent.CHANGE, function(sender, evt) {
+                        if (userConfig && userConfig.autoSave) {
+                            performAutoSave();
+                        }
+                    });
+
+                    console.log('✅ Auto-save listener installed');
+                } catch (error) {
+                    console.error('❌ Failed to setup auto-save:', error);
+                }
+            }
+
+            // Initialize auto-save after a delay to ensure editor is ready
+            setTimeout(() => {
+                setupAutoSave();
+            }, 3000);
 
             // Check backend private key status
             setTimeout(async () => {
