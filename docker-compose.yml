@@ -7,6 +7,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=8080
+      - DRAWIO_EXPORTER_URL=http://drawio-exporter:8081
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -16,6 +17,8 @@ services:
       start_period: 40s
     networks:
       - moon_golem_network
+    depends_on:
+      - drawio-exporter
     labels:
       - "traefik.enable=true"
       # Main domain - serves frontend and API
@@ -32,6 +35,17 @@ services:
       - "traefik.http.routers.drawiodb-api.service=drawiodb"
       # Service definition
       - "traefik.http.services.drawiodb.loadbalancer.server.port=8080"
+
+  drawio-exporter:
+    image: tomkludy/drawio-renderer:latest
+    container_name: drawio-exporter
+    restart: unless-stopped
+    networks:
+      - moon_golem_network
+    # No external ports - internal use only
+    # Service exposes HTTP REST API on port 8080 internally
+    labels:
+      - "traefik.enable=false"
 
 networks:
   moon_golem_network:

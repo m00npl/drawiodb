@@ -2,6 +2,7 @@ import { createClient, createROClient, Annotation, AccountData, Tagged, ArkivCli
 import { DiagramData, DiagramMetadata, UserConfig, ChunkExportRequest, ChunkData, UserTier, ShareToken, ShareTokenRequest, ShareTokenResponse, SearchRequest, SearchResult, DirectDiagramResult, DiagramThumbnailOptions } from '../types/diagram';
 import { UserService } from './userService';
 import { RetryQueue, RetryOperation } from './retryQueue';
+import { DrawIOExporterService } from './drawioExporter';
 import crypto from 'crypto';
 import CryptoJS from 'crypto-js';
 
@@ -12,6 +13,7 @@ export class ArkivService {
   private decoder = new TextDecoder();
   private userService = new UserService();
   private retryQueue: RetryQueue;
+  private drawioExporter: DrawIOExporterService;
 
   constructor(
     private chainId: string,
@@ -20,6 +22,7 @@ export class ArkivService {
     private wsUrl: string
   ) {
     this.retryQueue = new RetryQueue();
+    this.drawioExporter = new DrawIOExporterService(process.env.DRAWIO_EXPORTER_URL);
     this.setupRetryQueueHandlers();
   }
 
@@ -1002,72 +1005,57 @@ export class ArkivService {
 
   // Helper methods for format conversion
   private async convertToSVG(xmlContent: string): Promise<string> {
-    // SVG export with embedded DrawIO viewer
-    // Since there's no public DrawIO export API, we embed the diagram in an SVG with instructions
+    // Try using DrawIO exporter service
+    try {
+      const isAvailable = await this.drawioExporter.isAvailable();
+      if (isAvailable) {
+        console.log('✅ Using DrawIO exporter service for SVG conversion');
+        return await this.drawioExporter.exportToSVG(xmlContent);
+      }
+      console.warn('⚠️ DrawIO exporter service not available, using fallback');
+    } catch (error) {
+      console.warn('❌ DrawIO exporter service failed:', error);
+    }
+
+    // Fallback: SVG with instructions
     return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 800 600">
   <style>
-    .info-box {
-      font-family: Arial, sans-serif;
-      fill: #333;
-    }
-    .title {
-      font-size: 20px;
-      font-weight: bold;
-    }
-    .instruction {
-      font-size: 14px;
-      fill: #666;
-    }
-    .icon {
-      font-size: 48px;
-    }
+    .info-box { font-family: Arial, sans-serif; fill: #333; }
+    .title { font-size: 20px; font-weight: bold; }
+    .instruction { font-size: 14px; fill: #666; }
+    .icon { font-size: 48px; }
   </style>
-
-  <!-- Background -->
   <rect width="800" height="600" fill="#f8f9fa"/>
-
-  <!-- Icon -->
   <text x="400" y="180" text-anchor="middle" class="info-box icon">📊</text>
-
-  <!-- Title -->
   <text x="400" y="250" text-anchor="middle" class="info-box title">DrawIO Diagram - SVG Export</text>
-
-  <!-- Instructions -->
   <text x="400" y="300" text-anchor="middle" class="info-box instruction">To export this diagram as SVG:</text>
   <text x="400" y="330" text-anchor="middle" class="info-box instruction">1. Open the diagram in the editor</text>
   <text x="400" y="355" text-anchor="middle" class="info-box instruction">2. Go to File → Export as → SVG</text>
   <text x="400" y="380" text-anchor="middle" class="info-box instruction">3. Adjust settings and download</text>
-
-  <!-- Note -->
   <text x="400" y="430" text-anchor="middle" class="info-box instruction" fill="#999" font-size="12">
-    Server-side SVG export requires DrawIO Desktop CLI
+    Server-side exporter unavailable
   </text>
-
-  <!-- Embedded diagram data -->
   <metadata>
-    <drawio-diagram>
-      ${xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
-    </drawio-diagram>
+    <drawio-diagram>${xmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</drawio-diagram>
   </metadata>
 </svg>`;
   }
 
   private async convertToPNG(xmlContent: string): Promise<Uint8Array> {
-    // PNG export placeholder with instructions
-    // Return a simple PNG with message directing users to use the viewer
-    // This is a 400x300 PNG with instructions
-    const canvas = `
-    <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
-      <rect width="400" height="300" fill="#f8f9fa"/>
-      <text x="200" y="100" text-anchor="middle" font-family="Arial" font-size="40">📊</text>
-      <text x="200" y="150" text-anchor="middle" font-family="Arial" font-size="18" fill="#333">PNG Export Unavailable</text>
-      <text x="200" y="180" text-anchor="middle" font-family="Arial" font-size="14" fill="#666">Please use the viewer format</text>
-      <text x="200" y="205" text-anchor="middle" font-family="Arial" font-size="14" fill="#666">to open and export the diagram</text>
-    </svg>`;
+    // Try using DrawIO exporter service
+    try {
+      const isAvailable = await this.drawioExporter.isAvailable();
+      if (isAvailable) {
+        console.log('✅ Using DrawIO exporter service for PNG conversion');
+        return await this.drawioExporter.exportToPNG(xmlContent, 2);
+      }
+      console.warn('⚠️ DrawIO exporter service not available, using fallback');
+    } catch (error) {
+      console.warn('❌ DrawIO exporter service failed:', error);
+    }
 
-    // Since we can't easily convert SVG to PNG without a library, return a placeholder
-    // This is a minimal 1x1 transparent PNG
+    // Fallback: minimal 1x1 transparent PNG
     const base64PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
     return Uint8Array.from(atob(base64PNG), c => c.charCodeAt(0));
   }
