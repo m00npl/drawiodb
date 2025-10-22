@@ -21,9 +21,9 @@
             url: `https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js?v=${PLUGIN_VERSION}`,
             test: () => typeof ethers !== 'undefined'
         },
-        golemSDK: {
-            url: `https://unpkg.com/golem-base-sdk@0.1.15/dist/golem-base-sdk.min.js?v=${PLUGIN_VERSION}`,
-            test: () => typeof window.golem_base_sdk !== 'undefined'
+        arkivSDK: {
+            url: `https://unpkg.com/arkiv-sdk@latest/dist/index.js?v=${PLUGIN_VERSION}`,
+            test: () => typeof window.arkiv_sdk !== 'undefined'
         }
     };
 
@@ -67,7 +67,7 @@
         try {
             await loadExternalLibrary('cryptoJS');
             await loadExternalLibrary('ethers');
-            await loadExternalLibrary('golemSDK');
+            await loadExternalLibrary('arkivSDK');
             console.log('🎉 All libraries loaded successfully');
             return true;
         } catch (error) {
@@ -77,20 +77,20 @@
     }
 
     // Golem Network Configuration (matched to actual RPC chain ID)
-    const GOLEM_CONFIG = {
+    const ARKIV_CONFIG = {
         chainId: 60138453025, // Kaolin RPC actual chain ID (0xe0087f821)
         chainIdHex: '0xe0087f821',
         rpcUrl: 'https://kaolin.hoodi.arkiv.network/rpc',
         wsUrl: 'wss://https://kaolin.hoodi.arkiv.network/rpc/rpc/ws',
         explorerUrl: 'https://explorer.https://kaolin.hoodi.arkiv.network/rpc',
-        name: 'Golem Kaolin Testnet'
+        name: 'Arkiv Kaolin Testnet'
     };
 
     // Use relative path for integrated backend
     const BACKEND_URL = 'http://moon.dev.golem.network:8900';
 
     // SDK state
-    let golemClient = null;
+    let arkivClient = null;
     let isSDKMode = true; // Try SDK mode first with correct dPaste config
 
     console.log('🔥🔥🔥 GOLEM DB PLUGIN SCRIPT LOADED!');
@@ -400,7 +400,7 @@
                         throw new Error('MetaMask not found');
                     }
 
-                    if (typeof window.golem_base_sdk === 'undefined') {
+                    if (typeof window.arkiv_sdk === 'undefined') {
                         throw new Error('Golem SDK not loaded');
                     }
 
@@ -410,7 +410,7 @@
                     await ensureGolemNetwork();
 
                     const provider = window.ethereum;
-                    const sdk = window.golem_base_sdk;
+                    const sdk = window.arkiv_sdk;
 
                     // Explore what the SDK has available for web3 integration
                     console.log('🔍 Exploring Golem SDK capabilities...');
@@ -439,18 +439,18 @@
                     console.log(`🔐 MetaMask wallet: ${address}`);
 
                     const accountData = new sdk.Tagged('ethereumprovider', provider);
-                    golemClient = await sdk.createClient(
-                        GOLEM_CONFIG.chainId,
+                    arkivClient = await sdk.createClient(
+                        ARKIV_CONFIG.chainId,
                         accountData,
-                        GOLEM_CONFIG.rpcUrl,
-                        GOLEM_CONFIG.wsUrl
+                        ARKIV_CONFIG.rpcUrl,
+                        ARKIV_CONFIG.wsUrl
                     );
 
                     console.log('✅ Golem SDK initialized with MetaMask signer');
 
                     // Test network connectivity
                     try {
-                        const blockNumber = await golemClient.getRawClient().httpClient.getBlockNumber();
+                        const blockNumber = await arkivClient.getRawClient().httpClient.getBlockNumber();
                         console.log(`🔗 Connected to Golem network, current block: ${blockNumber}`);
                     } catch (netError) {
                         console.warn('⚠️ Network connectivity test failed:', netError);
@@ -469,10 +469,10 @@
                 try {
                     // Check if we're on the correct network
                     const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
-                    const expectedChainId = GOLEM_CONFIG.chainIdHex;
+                    const expectedChainId = ARKIV_CONFIG.chainIdHex;
 
                     if (currentChainId !== expectedChainId) {
-                        console.log(`🔄 Switching to Golem network (${GOLEM_CONFIG.name})...`);
+                        console.log(`🔄 Switching to Golem network (${ARKIV_CONFIG.name})...`);
 
                         try {
                             // Try to switch to the network
@@ -486,10 +486,10 @@
                                 await window.ethereum.request({
                                     method: 'wallet_addEthereumChain',
                                     params: [{
-                                        chainId: GOLEM_CONFIG.chainIdHex,
-                                        chainName: GOLEM_CONFIG.name,
-                                        rpcUrls: [GOLEM_CONFIG.rpcUrl],
-                                        blockExplorerUrls: [GOLEM_CONFIG.explorerUrl],
+                                        chainId: ARKIV_CONFIG.chainIdHex,
+                                        chainName: ARKIV_CONFIG.name,
+                                        rpcUrls: [ARKIV_CONFIG.rpcUrl],
+                                        blockExplorerUrls: [ARKIV_CONFIG.explorerUrl],
                                         nativeCurrency: {
                                             name: 'GLM',
                                             symbol: 'GLM',
@@ -591,7 +591,7 @@
 
             async function loadFromGolemSDK(diagramId) {
                 try {
-                    if (!golemClient) {
+                    if (!arkivClient) {
                         throw new Error('Golem SDK not initialized');
                     }
 
@@ -599,7 +599,7 @@
 
                     // Use entity key directly (diagramId is the entity key)
                     try {
-                        const storageValue = await golemClient.getStorageValue(diagramId);
+                        const storageValue = await arkivClient.getStorageValue(diagramId);
 
                         if (!storageValue) {
                             throw new Error('Diagram not found or empty');
@@ -628,7 +628,7 @@
 
             async function listFromGolemSDK() {
                 try {
-                    if (!golemClient) {
+                    if (!arkivClient) {
                         throw new Error('Golem SDK not initialized');
                     }
 
@@ -657,7 +657,7 @@
             let walletAddress = null;
 
             // SDK state variables
-            let golemClient = null;
+            let arkivClient = null;
             let ethersProviderInstance = null;
             let ethersSignerInstance = null;
             let isSDKMode = true; // Try SDK mode with dPaste config
@@ -889,7 +889,7 @@
 
                                 // Reset SDK instances to use new account
                                 console.log('🔄 Resetting SDK for new account...');
-                                golemClient = null;
+                                arkivClient = null;
                                 ethersProviderInstance = null;
                                 ethersSignerInstance = null;
 
@@ -1262,7 +1262,7 @@
                     const explorerBtn = document.createElement('button');
                     if (diagram.entityKey && !diagram.entityKey.startsWith('sharded:')) {
                         explorerBtn.innerHTML = '🔍';
-                        explorerBtn.title = `View in ${GOLEM_CONFIG.name} Explorer`;
+                        explorerBtn.title = `View in ${ARKIV_CONFIG.name} Explorer`;
                         explorerBtn.style.cssText = `
                             background: #17a2b8;
                             color: white;
@@ -1276,7 +1276,7 @@
                         `;
                         explorerBtn.onclick = (e) => {
                             e.stopPropagation();
-                            window.open(`${GOLEM_CONFIG.explorerUrl}/entity/${diagram.entityKey}?tab=data`, '_blank');
+                            window.open(`${ARKIV_CONFIG.explorerUrl}/entity/${diagram.entityKey}?tab=data`, '_blank');
                         };
                     }
 
@@ -1683,9 +1683,9 @@
                         <div style="margin-bottom: 10px;">
                             <label style="display: flex; align-items: center; cursor: pointer; margin-bottom: 5px;">
                                 <input type="radio" name="connectionMode" value="sdk" ${isSDKMode ? 'checked' : ''} style="margin-right: 8px;">
-                                <span><strong>Direct SDK</strong> - Post directly via MetaMask on ${GOLEM_CONFIG.name}</span>
+                                <span><strong>Direct SDK</strong> - Post directly via MetaMask on ${ARKIV_CONFIG.name}</span>
                             </label>
-                            <div style="font-size: 11px; color: #666; margin-left: 20px; margin-bottom: 8px;">Uses Chain ID ${GOLEM_CONFIG.chainId} (${GOLEM_CONFIG.name})</div>
+                            <div style="font-size: 11px; color: #666; margin-left: 20px; margin-bottom: 8px;">Uses Chain ID ${ARKIV_CONFIG.chainId} (${ARKIV_CONFIG.name})</div>
 
                             <label style="display: flex; align-items: center; cursor: pointer;">
                                 <input type="radio" name="connectionMode" value="backend" ${!isSDKMode ? 'checked' : ''} style="margin-right: 8px;">
@@ -1695,7 +1695,7 @@
                         </div>
 
                         <div id="sdkStatus" style="font-size: 12px; padding: 8px; border-radius: 4px; margin-top: 10px; ${isSDKMode ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;'}">
-                            ${isSDKMode ? `✅ SDK Mode Active - Direct MetaMask posting on ${GOLEM_CONFIG.name}` : '🔄 Backend Mode - Server relay active'}
+                            ${isSDKMode ? `✅ SDK Mode Active - Direct MetaMask posting on ${ARKIV_CONFIG.name}` : '🔄 Backend Mode - Server relay active'}
                         </div>
                     </div>
 
@@ -1737,7 +1737,7 @@
                     } else if (selectedMode === 'backend') {
                         console.log('🔄 Switching to backend mode...');
                         isSDKMode = false;
-                        golemClient = null;
+                        arkivClient = null;
                     }
 
                     const newConfig = {
@@ -1837,7 +1837,7 @@
                             <strong>🚀 Direct SDK Mode</strong>
                             <div style="margin-top: 5px; color: #666; font-size: 14px;">
                                 • Post directly from your MetaMask wallet<br>
-                                • Uses Chain ID ${GOLEM_CONFIG.chainId}<br>
+                                • Uses Chain ID ${ARKIV_CONFIG.chainId}<br>
                                 • Full decentralization<br>
                                 • Your keys, your data
                             </div>
@@ -1982,17 +1982,17 @@
                     const chainId = await window.ethereum.request({ method: 'eth_chainId' });
                     const currentChainId = parseInt(chainId, 16);
 
-                    const networkInfo = `Current Network: ${currentChainId === GOLEM_CONFIG.chainId ? `✅ ${GOLEM_CONFIG.name}` : `❌ Chain ${currentChainId} (Wrong Network)`}\n\nTarget Network: ${GOLEM_CONFIG.name} (${GOLEM_CONFIG.chainId})`;
+                    const networkInfo = `Current Network: ${currentChainId === ARKIV_CONFIG.chainId ? `✅ ${ARKIV_CONFIG.name}` : `❌ Chain ${currentChainId} (Wrong Network)`}\n\nTarget Network: ${ARKIV_CONFIG.name} (${ARKIV_CONFIG.chainId})`;
 
-                    if (currentChainId !== GOLEM_CONFIG.chainId) {
-                        const switchResult = await showConfirm('🚀 Switch to Golem Network', `${networkInfo}\n\nSwitch to ${GOLEM_CONFIG.name} now?`);
+                    if (currentChainId !== ARKIV_CONFIG.chainId) {
+                        const switchResult = await showConfirm('🚀 Switch to Golem Network', `${networkInfo}\n\nSwitch to ${ARKIV_CONFIG.name} now?`);
                         if (!switchResult) return;
 
                         try {
                             // Try to switch to the network
                             await window.ethereum.request({
                                 method: 'wallet_switchEthereumChain',
-                                params: [{ chainId: '0x' + GOLEM_CONFIG.chainId.toString(16) }],
+                                params: [{ chainId: '0x' + ARKIV_CONFIG.chainId.toString(16) }],
                             });
                         } catch (switchError) {
                             // Network doesn't exist, add it
@@ -2000,15 +2000,15 @@
                                 await window.ethereum.request({
                                     method: 'wallet_addEthereumChain',
                                     params: [{
-                                        chainId: '0x' + GOLEM_CONFIG.chainId.toString(16),
-                                        chainName: GOLEM_CONFIG.name,
+                                        chainId: '0x' + ARKIV_CONFIG.chainId.toString(16),
+                                        chainName: ARKIV_CONFIG.name,
                                         nativeCurrency: {
                                             name: 'GLM',
                                             symbol: 'GLM',
                                             decimals: 18
                                         },
-                                        rpcUrls: [GOLEM_CONFIG.rpcUrl],
-                                        blockExplorerUrls: [GOLEM_CONFIG.explorerUrl]
+                                        rpcUrls: [ARKIV_CONFIG.rpcUrl],
+                                        blockExplorerUrls: [ARKIV_CONFIG.explorerUrl]
                                     }]
                                 });
                             } else {
@@ -2276,8 +2276,8 @@
                                 try {
                                     const chainId = await window.ethereum.request({ method: 'eth_chainId' });
                                     const chainIdDecimal = parseInt(chainId, 16);
-                                    const isGolemNetwork = chainIdDecimal === GOLEM_CONFIG.chainId;
-                                    networkEl.innerHTML = `Network: ${isGolemNetwork ? '✅' : '❌'} ${isGolemNetwork ? GOLEM_CONFIG.name : `Chain ${chainIdDecimal}`}`;
+                                    const isGolemNetwork = chainIdDecimal === ARKIV_CONFIG.chainId;
+                                    networkEl.innerHTML = `Network: ${isGolemNetwork ? '✅' : '❌'} ${isGolemNetwork ? ARKIV_CONFIG.name : `Chain ${chainIdDecimal}`}`;
 
                                     // Balance status
                                     try {
@@ -2334,10 +2334,10 @@
             console.log(`📦 Version: ${PLUGIN_VERSION}`);
             console.log(`🔗 Backend: ${BACKEND_URL}`);
             console.log(`💳 Auto-connect: ${typeof window.ethereum !== 'undefined' ? 'Enabled' : 'Disabled (no MetaMask)'}`);
-            console.log(`🎯 Mode: ${isSDKMode ? `SDK (Direct posting on ${GOLEM_CONFIG.name})` : 'Backend (Relay)'}`);
+            console.log(`🎯 Mode: ${isSDKMode ? `SDK (Direct posting on ${ARKIV_CONFIG.name})` : 'Backend (Relay)'}`);
             console.log('');
             console.log('✨ Features:');
-            console.log(`   • 🚀 Direct posting via MetaMask (SDK mode with Chain ${GOLEM_CONFIG.chainId})`);
+            console.log(`   • 🚀 Direct posting via MetaMask (SDK mode with Chain ${ARKIV_CONFIG.chainId})`);
             console.log('   • 🔄 Backend relay posting');
             console.log('   • 🔐 Automatic wallet reconnection');
             console.log('   • 🎨 Beautiful modal dialogs');
@@ -2489,9 +2489,9 @@
             function shareDiagram(diagram) {
                 const shareUrl = `https://drawiodb.online/?diagram=${diagram.id}`;
                 const explorerUrl = diagram.entityKey && !diagram.entityKey.startsWith('sharded:')
-                    ? `${GOLEM_CONFIG.explorerUrl}/entity/${diagram.entityKey}?tab=data`
+                    ? `${ARKIV_CONFIG.explorerUrl}/entity/${diagram.entityKey}?tab=data`
                     : '';
-                const shareText = `📊 Check out my diagram: "${diagram.title}"\n\n🔗 Open in Draw.io:\n${shareUrl}${explorerUrl ? `\n\n🔍 View on ${GOLEM_CONFIG.name} Explorer:\n${explorerUrl}` : ''}\n\n🌐 Powered by Golem Network`;
+                const shareText = `📊 Check out my diagram: "${diagram.title}"\n\n🔗 Open in Draw.io:\n${shareUrl}${explorerUrl ? `\n\n🔍 View on ${ARKIV_CONFIG.name} Explorer:\n${explorerUrl}` : ''}\n\n🌐 Powered by Golem Network`;
 
                 // Create custom modal overlay
                 const overlay = document.createElement('div');
