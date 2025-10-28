@@ -1,0 +1,279 @@
+{
+  "numFailedTestSuites": 0,
+  "numFailedTests": 0,
+  "numPassedTestSuites": 1,
+  "numPassedTests": 12,
+  "numPendingTestSuites": 0,
+  "numPendingTests": 0,
+  "numRuntimeErrorTestSuites": 0,
+  "numTodoTests": 0,
+  "numTotalTestSuites": 1,
+  "numTotalTests": 12,
+  "openHandles": [
+    {},
+    {},
+    {},
+    {},
+    {}
+  ],
+  "snapshot": {
+    "added": 0,
+    "didUpdate": false,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0
+  },
+  "startTime": 1761662377153,
+  "success": true,
+  "testResults": [
+    {
+      "leaks": false,
+      "numFailingTests": 0,
+      "numPassingTests": 12,
+      "numPendingTests": 0,
+      "numTodoTests": 0,
+      "openHandles": [],
+      "perfStats": {
+        "end": 1761662378172,
+        "runtime": 982,
+        "slow": false,
+        "start": 1761662377190
+      },
+      "skipped": false,
+      "snapshot": {
+        "added": 0,
+        "fileDeleted": false,
+        "matched": 0,
+        "unchecked": 0,
+        "uncheckedKeys": [],
+        "unmatched": 0,
+        "updated": 0
+      },
+      "testFilePath": "/Volumes/Nvme/Projects/drawio/tests/api/smoke.test.js",
+      "testResults": [
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "Share Tokens - Arkiv Storage"
+          ],
+          "duration": 131,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality Share Tokens - Arkiv Storage should access shared diagram by token",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should access shared diagram by token"
+        },
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "Share Tokens - Arkiv Storage"
+          ],
+          "duration": 49,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality Share Tokens - Arkiv Storage should handle SVG export for shared diagrams",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should handle SVG export for shared diagrams"
+        },
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "Share Tokens - Arkiv Storage"
+          ],
+          "duration": 49,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality Share Tokens - Arkiv Storage should handle PNG export for shared diagrams",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should handle PNG export for shared diagrams"
+        },
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "Share Tokens - Arkiv Storage"
+          ],
+          "duration": 51,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality Share Tokens - Arkiv Storage should return HTML viewer for shared diagrams",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should return HTML viewer for shared diagrams"
+        },
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "DrawIO Exporter Service"
+          ],
+          "duration": 44,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality DrawIO Exporter Service should verify exporter service availability",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should verify exporter service availability"
+        },
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "DrawIO Exporter Service"
+          ],
+          "duration": 54,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality DrawIO Exporter Service should handle export with fallback gracefully",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should handle export with fallback gracefully"
+        },
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "Branding Consistency"
+          ],
+          "duration": 50,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality Branding Consistency should use drawiodb.online branding on homepage",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should use drawiodb.online branding on homepage"
+        },
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "Branding Consistency"
+          ],
+          "duration": 46,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality Branding Consistency should use drawiodb.online in share page footer",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should use drawiodb.online in share page footer"
+        },
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "API Health & Performance"
+          ],
+          "duration": 46,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality API Health & Performance should respond to health check within acceptable time",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should respond to health check within acceptable time"
+        },
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "API Health & Performance"
+          ],
+          "duration": 169,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality API Health & Performance should handle concurrent requests",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 5,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should handle concurrent requests"
+        },
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "Error Handling"
+          ],
+          "duration": 74,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality Error Handling should return proper error for invalid share token format",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should return proper error for invalid share token format"
+        },
+        {
+          "ancestorTitles": [
+            "Smoke Tests - Critical Functionality",
+            "Error Handling"
+          ],
+          "duration": 46,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Smoke Tests - Critical Functionality Error Handling should handle malformed export format requests",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should handle malformed export format requests"
+        }
+      ],
+      "failureMessage": null
+    }
+  ],
+  "wasInterrupted": false,
+  "timestamp": "2025-10-28T14:39:38.368Z",
+  "environment": {
+    "baseUrl": "https://drawiodb.online",
+    "apiUrl": "https://drawiodb.online/api",
+    "browser": "chrome",
+    "headless": true,
+    "timeouts": {
+      "ui": 15000,
+      "network": 60000
+    }
+  },
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "duration": 982
+  },
+  "categories": {}
+}

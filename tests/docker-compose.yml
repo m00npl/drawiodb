@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  tests:
+    build: .
+    container_name: drawio-golem-tests
+    environment:
+      - TEST_BASE_URL=${TEST_BASE_URL:-https://drawiodb.online}
+      - TEST_API_URL=${TEST_API_URL:-https://drawiodb.online/api}
+      - TEST_BROWSER=${TEST_BROWSER:-chrome}
+      - TEST_HEADLESS=${TEST_HEADLESS:-true}
+      - CI=true
+    volumes:
+      - ./reports:/app/reports
+      - ./screenshots:/app/screenshots
+      - /dev/shm:/dev/shm  # Shared memory for Chrome
+    shm_size: '2gb'
+    networks:
+      - test-network
+    depends_on:
+      - selenium-hub
+
+  # Optional: Selenium Grid for parallel testing
+  selenium-hub:
+    image: selenium/hub:4.15.0
+    container_name: selenium-hub
+    ports:
+      - "4444:4444"
+      - "4442:4442"
+      - "4443:4443"
+    environment:
+      - GRID_MAX_SESSION=4
+      - GRID_BROWSER_TIMEOUT=60
+      - GRID_TIMEOUT=60
+    networks:
+      - test-network
+
+  selenium-chrome:
+    image: selenium/node-chrome:4.15.0
+    container_name: selenium-chrome
+    environment:
+      - HUB_HOST=selenium-hub
+      - HUB_PORT=4444
+      - NODE_MAX_INSTANCES=2
+      - NODE_MAX_SESSION=2
+    volumes:
+      - /dev/shm:/dev/shm
+    shm_size: '2gb'
+    depends_on:
+      - selenium-hub
+    networks:
+      - test-network
+
+  # Test report server (optional)
+  report-server:
+    image: nginx:alpine
+    container_name: test-reports
+    ports:
+      - "8080:80"
+    volumes:
+      - ./reports:/usr/share/nginx/html
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  test-reports:
+  test-screenshots:

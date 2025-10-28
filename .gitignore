@@ -21,6 +21,9 @@ out/
 # Testing
 coverage/
 .nyc_output
+# Allow test files in tests directory
+!tests/**/*.test.js
+!tests/**/*.spec.js
 *.test.js
 *.spec.js
 
@@ -126,10 +129,9 @@ Dockerfile
 
 # Test files
 comprehensive-test.js
-tests/
 
 # AI configuration directories
 .claude/
 .cursor/
 .aider/
-.codeium/
+.codeium/tests/node_modules/
