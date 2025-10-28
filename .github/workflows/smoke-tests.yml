@@ -1,0 +1,197 @@
+name: Smoke Tests
+
+on:
+  # Run on pull requests
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '**.md'
+
+  # Run on push to main
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '**.md'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL to test'
+        required: false
+        default: 'https://drawiodb.online'
+      skip_ui_tests:
+        description: 'Skip UI tests'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      strict_mode:
+        description: 'Strict mode (fail on warnings)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+  # Run on schedule (daily at 6 AM UTC)
+  schedule:
+    - cron: '0 6 * * *'
+
+env:
+  TEST_BASE_URL: ${{ github.event.inputs.target_url || 'https://drawiodb.online' }}
+  SKIP_UI_TESTS: ${{ github.event.inputs.skip_ui_tests || 'false' }}
+  STRICT_MODE: ${{ github.event.inputs.strict_mode || 'false' }}
+
+jobs:
+  api-smoke-tests:
+    name: API Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install test dependencies
+        working-directory: tests
+        run: bun install --frozen-lockfile
+
+      - name: Run API smoke tests
+        working-directory: tests
+        env:
+          TEST_BASE_URL: ${{ env.TEST_BASE_URL }}
+          TEST_HEADLESS: true
+        run: |
+          echo "Testing against: $TEST_BASE_URL"
+          bun run smoke
+
+      - name: Upload API test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-smoke-test-results
+          path: tests/test-reports/
+          retention-days: 30
+
+  ui-smoke-tests:
+    name: UI Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{ github.event.inputs.skip_ui_tests != 'true' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install test dependencies
+        working-directory: tests
+        run: bun install --frozen-lockfile
+
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Run UI smoke tests
+        working-directory: tests
+        env:
+          TEST_BASE_URL: ${{ env.TEST_BASE_URL }}
+          TEST_HEADLESS: true
+          TEST_BROWSER: chrome
+        run: |
+          echo "Testing against: $TEST_BASE_URL"
+          bun run smoke:ui
+
+      - name: Upload UI test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-smoke-test-results
+          path: |
+            tests/test-reports/
+            tests/screenshots/
+          retention-days: 30
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-screenshots
+          path: tests/screenshots/
+          retention-days: 7
+
+  smoke-tests-summary:
+    name: Smoke Tests Summary
+    runs-on: ubuntu-latest
+    needs: [api-smoke-tests, ui-smoke-tests]
+    if: always()
+
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-smoke-test-results'
+          merge-multiple: true
+          path: test-results
+
+      - name: Generate summary
+        run: |
+          echo "# Smoke Tests Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Target URL:** ${{ env.TEST_BASE_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # API Tests Status
+          if [ "${{ needs.api-smoke-tests.result }}" == "success" ]; then
+            echo "✅ **API Smoke Tests:** PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **API Smoke Tests:** FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # UI Tests Status
+          if [ "${{ env.SKIP_UI_TESTS }}" == "true" ]; then
+            echo "⏭️ **UI Smoke Tests:** SKIPPED" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.ui-smoke-tests.result }}" == "success" ]; then
+            echo "✅ **UI Smoke Tests:** PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **UI Smoke Tests:** FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Overall Status
+          if [ "${{ needs.api-smoke-tests.result }}" == "success" ] &&
+             ([ "${{ env.SKIP_UI_TESTS }}" == "true" ] || [ "${{ needs.ui-smoke-tests.result }}" == "success" ]); then
+            echo "## ✅ All Tests Passed" >> $GITHUB_STEP_SUMMARY
+            echo "System is healthy and ready for deployment." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Tests Failed" >> $GITHUB_STEP_SUMMARY
+            echo "Critical issues detected. Review test logs before proceeding." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check overall status
+        if: needs.api-smoke-tests.result != 'success' || (needs.ui-smoke-tests.result != 'success' && github.event.inputs.skip_ui_tests != 'true')
+        run: |
+          echo "Smoke tests failed!"
+          exit 1

@@ -2105,12 +2105,26 @@ async function startServer() {
       });
     });
 
-    // Root path for Draw.io HTML
+    // Root path for Draw.io HTML with drawiodb.online branding
     app.get('/', async (c) => {
-      const filePath = path.join(__dirname, '../public/index.html');
+      const filePath = path.join(__dirname, '../drawio-public/index.html');
       const file = Bun.file(filePath);
+      let html = await file.text();
+
+      // Replace draw.io branding with drawiodb.online
+      html = html
+        .replace(/<title>.*?<\/title>/, '<title>DrawIO DB - Blockchain-Powered Diagram Software</title>')
+        .replace(/content="draw\.io is free online diagram software/g, 'content="drawiodb.online is blockchain-powered diagram software')
+        .replace(/name="Description" content=".*?"/g, 'name="Description" content="drawiodb.online is a blockchain-powered diagram editor that saves your diagrams securely to Arkiv network. Create flowcharts, UML, ER diagrams and more."')
+        .replace(/name="Keywords" content=".*?"/g, 'name="Keywords" content="drawiodb, blockchain diagrams, arkiv, flowchart maker, uml, secure diagrams"')
+        .replace(/itemprop="name" content=".*?"/g, 'itemprop="name" content="DrawIO DB - Blockchain Diagram Editor"')
+        .replace(/itemprop="description" content=".*?"/g, 'itemprop="description" content="drawiodb.online is a blockchain-powered diagram editor built on Arkiv network. Create and store diagrams securely with Web3 technology."')
+        .replace(/rel="canonical" href="https:\/\/app\.diagrams\.net"/g, 'rel="canonical" href="https://drawiodb.online"')
+        .replace(/Flowchart Maker &amp; Online Diagram Software/g, 'DrawIO DB - Blockchain Diagram Editor')
+        .replace(/draw\.io is a free/g, 'drawiodb.online is a blockchain-powered');
+
       c.header('Content-Type', 'text/html; charset=utf-8');
-      return c.body(await file.text());
+      return c.body(html);
     });
 
     // 404 handler
