@@ -2107,7 +2107,7 @@ async function startServer() {
 
     // Root path for Draw.io HTML with drawiodb.online branding
     app.get('/', async (c) => {
-      const filePath = path.join(__dirname, '../drawio-public/index.html');
+      const filePath = path.join(__dirname, '../public/index.html');
       const file = Bun.file(filePath);
       let html = await file.text();
 
