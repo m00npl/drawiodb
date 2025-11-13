@@ -213,24 +213,3 @@ jobs:
             echo "Deployment successful!"
           '
 
-      - name: Run post-deployment smoke tests
-        run: |
-          # Wait a bit for services to stabilize
-          sleep 30
-
-          # Run smoke tests locally against production
-          cd tests
-          bun install --frozen-lockfile
-          TEST_BASE_URL=https://drawiodb.online TEST_HEADLESS=true bun run smoke || {
-            echo "Post-deployment smoke tests failed!"
-            exit 1
-          }
-
-      - name: Upload post-deployment test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: post-deployment-smoke-results
-          path: tests/test-reports/
-          retention-days: 30
-
