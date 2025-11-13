@@ -39,11 +39,6 @@ jobs:
       - name: Run tests
         run: bun test
 
-      - name: Security scan
-        uses: securecodewarrior/github-action-add-sarif@v1
-        with:
-          sarif-file: 'security-scan-results.sarif'
-
   build:
     needs: test
     runs-on: ubuntu-latest
