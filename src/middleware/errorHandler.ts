@@ -1,4 +1,4 @@
-import { Context, Next } from 'hono';
+import type { Context, Next, MiddlewareHandler } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
 interface ErrorLog {
@@ -13,7 +13,7 @@ interface ErrorLog {
 // Simple in-memory error logging (use proper logging service in production)
 const errorLogs: ErrorLog[] = [];
 
-export function errorHandler() {
+export function errorHandler(): MiddlewareHandler {
   return async (c: Context, next: Next) => {
     try {
       await next();

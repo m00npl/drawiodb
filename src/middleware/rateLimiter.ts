@@ -1,4 +1,4 @@
-import { Context, Next } from 'hono';
+import type { Context, Next, MiddlewareHandler } from 'hono';
 
 interface RateLimitConfig {
   windowMs: number; // Time window in milliseconds
@@ -15,7 +15,7 @@ interface ClientInfo {
 // In-memory store (use Redis in production)
 const clients = new Map<string, ClientInfo>();
 
-export function rateLimiter(options: RateLimitConfig) {
+export function rateLimiter(options: RateLimitConfig): MiddlewareHandler {
   const {
     windowMs,
     maxRequests,
