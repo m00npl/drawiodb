@@ -630,8 +630,8 @@ export class ArkivService {
   async listDiagrams(author?: string, walletAddress?: string, custodialId?: string): Promise<DiagramMetadata[]> {
     try {
       // Query for both regular diagrams and sharded diagrams
-      let regularQueryParts = ['type = "diagram"'];
-      let chunksQueryParts = ['type = "diagram_chunk"'];
+      const regularQueryParts = ['type = "diagram"'];
+      const chunksQueryParts = ['type = "diagram_chunk"'];
 
       if (author) {
         regularQueryParts.push(`author = "${author}"`);
@@ -749,7 +749,7 @@ export class ArkivService {
       console.log('Enhanced search request:', searchRequest);
 
       // Build base query for user's diagrams
-      let queryParts = ['type = "diagram"'];
+      const queryParts = ['type = "diagram"'];
 
       // Add user authentication filters
       if (walletAddress) {
@@ -1282,7 +1282,7 @@ export class ArkivService {
 
       this.ensureWriteClient();
       // First find the diagram to ensure it exists and belongs to the user
-      let queryParts = ['type = "diagram"', `id = "${diagramId}"`];
+      const queryParts = ['type = "diagram"', `id = "${diagramId}"`];
 
       if (walletAddress) {
         queryParts.push(`wallet = "${walletAddress}"`);
@@ -1335,7 +1335,7 @@ export class ArkivService {
       console.log(`✏️ Renaming diagram ${diagramId} to "${newTitle}"`);
 
       // Find the original diagram
-      let queryParts = ['type = "diagram"', `id = "${diagramId}"`];
+      const queryParts = ['type = "diagram"', `id = "${diagramId}"`];
       if (walletAddress) {
         queryParts.push(`wallet = "${walletAddress}"`);
       }
@@ -1408,7 +1408,7 @@ export class ArkivService {
     console.log(`⏰ Changing BTL for diagram ${diagramId} to ${newBTLDays} days`);
 
       // Find the original diagram
-      let queryParts = ['type = "diagram"', `id = "${diagramId}"`];
+      const queryParts = ['type = "diagram"', `id = "${diagramId}"`];
       if (walletAddress) {
         queryParts.push(`wallet = "${walletAddress}"`);
       }
@@ -1485,7 +1485,7 @@ export class ArkivService {
     console.log(`🛡️ Protecting diagram ${diagramId}`);
 
       // Find the original diagram
-      let queryParts = ['type = "diagram"', `id = "${diagramId}"`];
+      const queryParts = ['type = "diagram"', `id = "${diagramId}"`];
       if (walletAddress) {
         queryParts.push(`wallet = "${walletAddress}"`);
       }
