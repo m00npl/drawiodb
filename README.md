@@ -26,17 +26,20 @@ A decentralized diagram editor built on DrawIO with Arkiv blockchain storage int
 ### Environment Setup
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/m00npl/drawiodb.git
 cd drawiodb
 ```
 
 2. Copy environment configuration:
+
 ```bash
 cp .env.example .env
 ```
 
 3. Configure your environment variables in `.env`:
+
 ```env
 # Arkiv Configuration (Kaolin Testnet)
 GOLEM_CHAIN_ID=60138453025
@@ -47,6 +50,12 @@ GOLEM_WS_URL=wss://kaolin.hoodi.arkiv.network/rpc/ws
 # Server Configuration
 PORT=3000
 NODE_ENV=development
+```
+
+Before running the server locally, copy the DrawIO public assets:
+
+```bash
+cp -r drawio-public public
 ```
 
 ### Deployment Options
@@ -86,6 +95,7 @@ bun run dev
    - Domain name pointing to your server IP
 
 2. **Clone and configure**:
+
    ```bash
    git clone https://github.com/m00npl/drawiodb.git
    cd drawiodb
@@ -94,6 +104,7 @@ bun run dev
    ```
 
 3. **Deploy with Docker**:
+
    ```bash
    docker compose up -d
    ```
@@ -107,6 +118,7 @@ For production deployment with custom domain:
 3. **SSL Certificate**: Automatic Let's Encrypt certificates recommended
 
 Example nginx configuration:
+
 ```nginx
 server {
     listen 80;

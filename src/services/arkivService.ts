@@ -1,4 +1,7 @@
-import { createClient, createROClient, Annotation, AccountData, Tagged, ArkivClient, ArkivROClient } from 'arkiv-sdk';
+import { createPublicClient, createWalletClient, http, type Attribute, type Entity, type MimeType, type PublicArkivClient, type WalletArkivClient } from '@arkiv-network/sdk';
+import { privateKeyToAccount } from '@arkiv-network/sdk/accounts';
+import { kaolin, mendoza, marketplace, localhost } from '@arkiv-network/sdk/chains';
+import type { Chain, Hex } from 'viem';
 import { DiagramData, DiagramMetadata, UserConfig, ChunkExportRequest, ChunkData, UserTier, ShareToken, ShareTokenRequest, ShareTokenResponse, SearchRequest, SearchResult, DirectDiagramResult, DiagramThumbnailOptions } from '../types/diagram';
 import { UserService } from './userService';
 import { RetryQueue, RetryOperation } from './retryQueue';
@@ -6,9 +9,65 @@ import { DrawIOExporterService } from './drawioExporter';
 import crypto from 'crypto';
 import CryptoJS from 'crypto-js';
 
+const BLOCK_TIME_SECONDS = 2;
+const KNOWN_CHAINS: Chain[] = [kaolin, mendoza, marketplace, localhost];
+
+const attr = (key: string, value: string | number): Attribute => ({ key, value });
+
+function blocksToSeconds(blocks?: number): number {
+  if (!blocks || blocks <= 0) {
+    return BLOCK_TIME_SECONDS;
+  }
+  return Math.max(1, Math.floor(blocks) * BLOCK_TIME_SECONDS);
+}
+
+function withCustomRpc(chain: Chain, rpcUrl: string, wsUrl?: string): Chain {
+  const httpUrls = [rpcUrl] as const;
+  const wsUrls = wsUrl ? ([wsUrl] as const) : undefined;
+  return {
+    ...chain,
+    rpcUrls: {
+      ...chain.rpcUrls,
+      default: {
+        ...chain.rpcUrls?.default,
+        http: httpUrls,
+        ...(wsUrls ? { webSocket: wsUrls } : {})
+      }
+    }
+  } as Chain;
+}
+
+function resolveChain(chainId: number, rpcUrl: string, wsUrl: string): Chain {
+  const match = KNOWN_CHAINS.find((chain) => chain.id === chainId);
+  if (match) {
+    return withCustomRpc(match, rpcUrl, wsUrl);
+  }
+
+  const httpUrls = [rpcUrl] as const;
+  const wsUrls = wsUrl ? ([wsUrl] as const) : undefined;
+
+  return {
+    id: chainId,
+    name: `Arkiv ${chainId}`,
+    network: `arkiv-${chainId}`,
+    nativeCurrency: {
+      name: 'Ether',
+      symbol: 'ETH',
+      decimals: 18
+    },
+    rpcUrls: {
+      default: {
+        http: httpUrls,
+        ...(wsUrls ? { webSocket: wsUrls } : {})
+      }
+    },
+    testnet: true
+  } as Chain;
+}
+
 export class ArkivService {
-  private writeClient: ArkivClient | null = null;
-  private readClient: ArkivROClient | null = null;
+  private writeClient: WalletArkivClient | null = null;
+  private readClient: PublicArkivClient | null = null;
   private encoder = new TextEncoder();
   private decoder = new TextDecoder();
   private userService = new UserService();
@@ -66,24 +125,75 @@ export class ArkivService {
     return this.retryQueue.getQueueStatus();
   }
 
-  private getQueryClient(): ArkivClient | ArkivROClient {
-    if (this.writeClient) {
-      return this.writeClient;
+  private getQueryClient(): PublicArkivClient {
+    if (!this.readClient) {
+      throw new Error('Arkiv client is not initialized');
     }
 
-    if (this.readClient) {
-      return this.readClient;
-    }
-
-    throw new Error('Arkiv client is not initialized');
+    return this.readClient;
   }
 
-  private ensureWriteClient(): ArkivClient {
+  private ensureWriteClient(): WalletArkivClient {
     if (!this.writeClient) {
       throw new Error('Backend is running without a signing key. Use the Draw.io plugin with MetaMask to sign and pay for transactions.');
     }
 
     return this.writeClient;
+  }
+
+  private async queryEntities(query: string): Promise<Entity[]> {
+    const client = this.getQueryClient();
+    return await client.query(query);
+  }
+
+  private async ensureEntityPayload(entity: Entity): Promise<Uint8Array> {
+    if (entity.payload && entity.payload.length > 0) {
+      return entity.payload;
+    }
+
+    const client = this.getQueryClient();
+    const fullEntity = await client.getEntity(entity.key as Hex);
+    if (!fullEntity.payload || fullEntity.payload.length === 0) {
+      throw new Error(`Entity ${entity.key} has no payload data`);
+    }
+
+    return fullEntity.payload;
+  }
+
+  private async decodeEntityPayload(entity: Entity): Promise<string> {
+    const payload = await this.ensureEntityPayload(entity);
+    return this.decoder.decode(payload);
+  }
+
+  private async createEntities(requests: Array<{ payload: Uint8Array; attributes: Attribute[]; expiresInSeconds: number; contentType?: MimeType }>): Promise<Hex[]> {
+    if (!requests.length) {
+      return [];
+    }
+
+    const client = this.ensureWriteClient();
+    const result = await client.mutateEntities({
+      creates: requests.map((request) => ({
+        payload: request.payload,
+        attributes: request.attributes,
+        contentType: request.contentType ?? 'application/json',
+        expiresIn: Math.max(1, Math.floor(request.expiresInSeconds))
+      }))
+    });
+
+    return result.createdEntities ?? [];
+  }
+
+  private async deleteEntities(entityKeys: Hex[]): Promise<Hex[]> {
+    if (!entityKeys.length) {
+      return [];
+    }
+
+    const client = this.ensureWriteClient();
+    const result = await client.mutateEntities({
+      deletes: entityKeys.map((entityKey) => ({ entityKey }))
+    });
+
+    return result.deletedEntities ?? [];
   }
 
   hasWriteAccess(): boolean {
@@ -94,31 +204,29 @@ export class ArkivService {
     try {
       const numericChainId = parseInt(this.chainId, 10);
       if (Number.isNaN(numericChainId)) {
-        throw new Error(`Invalid GOLEM_CHAIN_ID value: ${this.chainId}`);
+        throw new Error(`Invalid ARKIV_CHAIN_ID value: ${this.chainId}`);
       }
-      this.readClient = createROClient(
-        numericChainId,
-        this.rpcUrl,
-        this.wsUrl
-      );
+      const chain = resolveChain(numericChainId, this.rpcUrl, this.wsUrl);
+
+      const publicClient = createPublicClient({
+        chain,
+        transport: http(this.rpcUrl)
+      });
+      this.readClient = publicClient;
       console.log('Arkiv read-only client initialized successfully');
 
       if (this.privateKey) {
-        const cleanPrivateKey = this.privateKey.startsWith('0x')
-          ? this.privateKey.slice(2)
-          : this.privateKey;
+        const normalizedPrivateKey = this.privateKey.startsWith('0x')
+          ? (this.privateKey as Hex)
+          : (`0x${this.privateKey}` as Hex);
 
-        const key: AccountData = new Tagged(
-          'privatekey',
-          Buffer.from(cleanPrivateKey, 'hex')
-        );
-
-        this.writeClient = await createClient(
-          numericChainId,
-          key,
-          this.rpcUrl,
-          this.wsUrl
-        );
+        const account = privateKeyToAccount(normalizedPrivateKey);
+        const walletClient = createWalletClient({
+          chain,
+          transport: http(this.rpcUrl),
+          account
+        });
+        this.writeClient = walletClient;
         console.log('Arkiv write client initialized successfully');
       } else {
         console.log('Arkiv write client not configured – operating in read-only mode');
@@ -237,8 +345,6 @@ export class ArkivService {
         return 'USE_FRONTEND'; // Plugin will detect this and use MetaMask
       }
 
-      const client = this.writeClient;
-
       // Determine BTL based on user tier and limits
       const userLimits = this.userService.getUserLimits(userTier);
       let btlDays = customBtl || userLimits.defaultBTLDays;
@@ -303,34 +409,46 @@ export class ArkivService {
       const encodedData = this.encoder.encode(diagramJson);
       console.log(`Encoded data length: ${encodedData.length}`);
 
-      const creates = [{
-        data: encodedData,
-        btl: btlBlocks,
-        stringAnnotations: [
-          new Annotation('type', 'diagram'),
-          new Annotation('id', diagramData.id),
-          new Annotation('title', diagramData.title),
-          new Annotation('author', diagramData.author),
-          new Annotation('user_tier', userTier),
-          ...(walletAddress ? [new Annotation('wallet', walletAddress)] : []),
-          ...(custodialId ? [new Annotation('custodial_id', custodialId)] : []),
-          ...(shouldEncrypt ? [new Annotation('encrypted', '1')] : [])
-        ],
-        numericAnnotations: [
-          new Annotation('timestamp', diagramData.timestamp),
-          new Annotation('version', Math.max(1, diagramData.version)),
-          new Annotation('size_kb', Math.max(1, Math.round(diagramSizeKB))), // Ensure non-zero
-          new Annotation('btl_days', Math.max(1, btlDays))
-        ]
-      }];
+      const stringAttributes: Attribute[] = [
+        attr('type', 'diagram'),
+        attr('id', diagramData.id),
+        attr('title', diagramData.title),
+        attr('author', diagramData.author),
+        attr('user_tier', userTier)
+      ];
 
-      console.log(`Creating entities in Arkiv with ${creates.length} entities`);
-      console.log(`String annotations: ${creates[0].stringAnnotations?.length || 0}`);
-      console.log(`Numeric annotations: ${creates[0].numericAnnotations?.length || 0}`);
+      if (walletAddress) {
+        stringAttributes.push(attr('wallet', walletAddress));
+      }
+      if (custodialId) {
+        stringAttributes.push(attr('custodial_id', custodialId));
+      }
+      if (shouldEncrypt) {
+        stringAttributes.push(attr('encrypted', '1'));
+      }
 
-      let createReceipt;
+      const numericAttributes: Attribute[] = [
+        attr('timestamp', diagramData.timestamp),
+        attr('version', Math.max(1, diagramData.version)),
+        attr('size_kb', Math.max(1, Math.round(diagramSizeKB))),
+        attr('btl_days', Math.max(1, btlDays))
+      ];
+
+      const attributes = [...stringAttributes, ...numericAttributes];
+      const expiresInSeconds = blocksToSeconds(btlBlocks);
+
+  console.log(`Creating entity in Arkiv`);
+  console.log(`String attributes count: ${stringAttributes.length}`);
+  console.log(`Numeric attributes count: ${numericAttributes.length}`);
+
+  let createdEntityKeys: Hex[] = [];
       try {
-        createReceipt = await client.createEntities(creates);
+        createdEntityKeys = await this.createEntities([{
+          payload: encodedData,
+          attributes,
+          expiresInSeconds,
+          contentType: 'application/json'
+        }]);
       } catch (createError) {
         if (this.isNetworkTimeoutError(createError)) {
           console.log(`⚠️ CreateEntities timeout, adding to retry queue for later processing`);
@@ -354,10 +472,10 @@ export class ArkivService {
         }
         throw createError; // Re-throw non-timeout errors
       }
-      console.log(`Arkiv createEntities response:`, createReceipt);
+      console.log(`Arkiv mutateEntities response (creates):`, createdEntityKeys);
 
-      if (createReceipt && createReceipt.length > 0) {
-        const entityKey = createReceipt[0].entityKey;
+      if (createdEntityKeys && createdEntityKeys.length > 0) {
+        const entityKey = createdEntityKeys[0];
         console.log(`✅ Diagram exported successfully with entity key: ${entityKey}`);
 
         // Verify the data was saved correctly
@@ -386,10 +504,9 @@ export class ArkivService {
   async importDiagram(diagramId: string, decryptionPassword?: string): Promise<DiagramData | null> {
     try {
       // First try to import as a regular diagram
-      const query = `type = "diagram" && id = "${diagramId}"`;
-      console.log(`Executing import query: ${query}`);
-      const client = this.getQueryClient();
-      const queryResult = await client.queryEntities(query);
+    const query = `type = "diagram" && id = "${diagramId}"`;
+    console.log(`Executing import query: ${query}`);
+    const queryResult = await this.queryEntities(query);
 
       console.log(`Import query result: ${queryResult?.length || 0} entities found`);
 
@@ -398,9 +515,8 @@ export class ArkivService {
         console.log(`🔍 Import entity structure:`, entity);
 
         try {
-          // Use storageValue instead of entity.data
-          const decodedData = this.decoder.decode(entity.storageValue);
-          console.log(`🔍 Import decoded storageValue: ${decodedData}`);
+          const decodedData = await this.decodeEntityPayload(entity);
+          console.log(`🔍 Import decoded payload: ${decodedData}`);
           console.log(`🔍 Import decoded data length: ${decodedData.length}`);
 
           if (!decodedData || decodedData.trim().length === 0) {
@@ -441,7 +557,12 @@ export class ArkivService {
           return diagramData;
         } catch (decodeError) {
           console.error('❌ Error decoding or parsing data:', decodeError);
-          console.error('❌ Raw entity storageValue:', entity.storageValue);
+          try {
+            const rawPayload = await this.ensureEntityPayload(entity);
+            console.error('❌ Raw entity payload (utf-8):', this.decoder.decode(rawPayload));
+          } catch (payloadError) {
+            console.error('❌ Failed to load raw entity payload:', payloadError);
+          }
           throw new Error(`Data decode/parse failed: ${(decodeError as Error).message}`);
         }
       } else {
@@ -453,7 +574,7 @@ export class ArkivService {
         // Try to find any entities with this diagram_id (including chunks, renames, etc.)
         const evidenceQuery = `id = "${diagramId}" || diagram_id = "${diagramId}" || originalDiagramId = "${diagramId}"`;
         try {
-          const evidenceResult = await client.queryEntities(evidenceQuery);
+          const evidenceResult = await this.queryEntities(evidenceQuery);
 
           if (evidenceResult && evidenceResult.length > 0) {
             console.log(`⏰ Found evidence of diagram ${diagramId} but main entity not accessible`);
@@ -461,7 +582,7 @@ export class ArkivService {
             // Check if we can find any BTL/expiration information
             for (const evidence of evidenceResult) {
               try {
-                const evidenceData = this.decoder.decode(evidence.storageValue);
+                const evidenceData = await this.decodeEntityPayload(evidence);
                 const parsed = JSON.parse(evidenceData);
 
                 if (parsed.type === 'diagram' || parsed.type === 'btl_change') {
@@ -533,10 +654,9 @@ export class ArkivService {
       console.log(`Executing regular query: ${regularQuery}`);
       console.log(`Executing chunks query: ${chunksQuery}`);
 
-      const queryClient = this.getQueryClient();
       const [regularResult, chunksResult] = await Promise.all([
-        queryClient.queryEntities(regularQuery),
-        queryClient.queryEntities(chunksQuery)
+        this.queryEntities(regularQuery),
+        this.queryEntities(chunksQuery)
       ]);
 
       console.log(`Regular diagrams found: ${regularResult ? regularResult.length : 0}`);
@@ -550,7 +670,7 @@ export class ArkivService {
           console.log('🔍 Regular diagram entity structure:', entity);
 
           try {
-            const decodedData = this.decoder.decode(entity.storageValue);
+            const decodedData = await this.decodeEntityPayload(entity);
             console.log('🔍 Regular diagram decoded storageValue:', decodedData);
 
             const diagramData = JSON.parse(decodedData);
@@ -562,7 +682,7 @@ export class ArkivService {
               author: diagramData.author || 'Unknown',
               timestamp: diagramData.timestamp || Date.now(),
               version: diagramData.version || 1,
-              entityKey: entity.entityKey
+              entityKey: entity.key
             });
           } catch (error) {
             console.error('🔍 Error parsing regular diagram entity:', error);
@@ -572,7 +692,7 @@ export class ArkivService {
               author: 'Unknown',
               timestamp: Date.now(),
               version: 1,
-              entityKey: entity.entityKey
+              entityKey: entity.key
             });
           }
         }
@@ -585,7 +705,7 @@ export class ArkivService {
         // Group chunks by diagram ID
         for (const entity of chunksResult) {
           try {
-            const decodedData = this.decoder.decode(entity.storageValue);
+            const decodedData = await this.decodeEntityPayload(entity);
             const chunkData: ChunkData = JSON.parse(decodedData);
 
             if (!shardedDiagrams[chunkData.diagramId]) {
@@ -669,11 +789,10 @@ export class ArkivService {
         }
       }
 
-      const query = queryParts.join(' && ');
-      console.log(`Executing enhanced search query: ${query}`);
+  const query = queryParts.join(' && ');
+  console.log(`Executing enhanced search query: ${query}`);
 
-      const queryClient = this.getQueryClient();
-      const results = await queryClient.queryEntities(query);
+  const results = await this.queryEntities(query);
 
       if (!results || results.length === 0) {
         return [];
@@ -684,7 +803,7 @@ export class ArkivService {
       // Process each result
       for (const entity of results) {
         try {
-          const decodedData = this.decoder.decode(entity.storageValue);
+          const decodedData = await this.decodeEntityPayload(entity);
           let diagramData: DiagramData;
 
           try {
@@ -746,7 +865,7 @@ export class ArkivService {
             author: diagramData.author,
             timestamp: diagramData.timestamp,
             version: diagramData.version,
-            entityKey: entity.entityKey,
+            entityKey: entity.key,
             score: score,
             excerpt: excerpt || diagramData.title,
             tags: tags.slice(0, 10) // Limit to first 10 tags
@@ -952,16 +1071,15 @@ export class ArkivService {
       console.log(`Getting diagram metadata: ${diagramId}`);
 
       // First try to find the diagram by ID
-      const queryClient = this.getQueryClient();
       const query = `type = "diagram" && id = "${diagramId}"`;
 
-      const results = await queryClient.queryEntities(query);
+      const results = await this.queryEntities(query);
       if (!results || results.length === 0) {
         return null;
       }
 
       const entity = results[0];
-      const decodedData = this.decoder.decode(entity.storageValue);
+      const decodedData = await this.decodeEntityPayload(entity);
 
       let diagramData: DiagramData;
       try {
@@ -977,7 +1095,7 @@ export class ArkivService {
         author: diagramData.author,
         timestamp: diagramData.timestamp,
         version: diagramData.version,
-        entityKey: entity.entityKey
+        entityKey: entity.key
       };
     } catch (error) {
       console.error('Get diagram metadata failed:', error);
@@ -1162,7 +1280,7 @@ export class ArkivService {
         return false; // Indicates frontend should handle
       }
 
-      const client = this.writeClient;
+      this.ensureWriteClient();
       // First find the diagram to ensure it exists and belongs to the user
       let queryParts = ['type = "diagram"', `id = "${diagramId}"`];
 
@@ -1177,7 +1295,7 @@ export class ArkivService {
       const query = queryParts.join(' && ');
       console.log(`🗑️ Executing delete query: ${query}`);
 
-      const queryResult = await client.queryEntities(query);
+      const queryResult = await this.queryEntities(query);
       console.log(`🗑️ Delete query result: ${queryResult?.length || 0} entities found`);
 
       if (!queryResult || queryResult.length === 0) {
@@ -1186,16 +1304,12 @@ export class ArkivService {
       }
 
       const entity = queryResult[0];
-      console.log(`🗑️ Found entity to delete: ${entity.entityKey}`);
+      console.log(`🗑️ Found entity to delete: ${entity.key}`);
 
-      // Delete the entity using Arkiv SDK
-      const deletes = [entity.entityKey];
-      console.log(`🗑️ Deleting entity with key: ${entity.entityKey}`);
+      const deletedKeys = await this.deleteEntities([entity.key as Hex]);
+      console.log(`🗑️ Delete receipt:`, deletedKeys);
 
-      const deleteReceipt = await client.deleteEntities(deletes);
-      console.log(`🗑️ Delete receipt:`, deleteReceipt);
-
-      if (deleteReceipt && deleteReceipt.length > 0) {
+      if (deletedKeys && deletedKeys.length > 0) {
         console.log(`✅ Successfully deleted diagram: ${diagramId}`);
         return true;
       } else {
@@ -1217,7 +1331,7 @@ export class ArkivService {
         return false; // Indicates frontend should handle
       }
 
-      const client = this.writeClient;
+      this.ensureWriteClient();
       console.log(`✏️ Renaming diagram ${diagramId} to "${newTitle}"`);
 
       // Find the original diagram
@@ -1227,14 +1341,14 @@ export class ArkivService {
       }
 
       const queryConditions = queryParts.join(' && ');
-      const diagrams = await client.queryEntities(queryConditions);
+      const diagrams = await this.queryEntities(queryConditions);
 
       if (!diagrams || diagrams.length === 0) {
         throw new Error(`Diagram ${diagramId} not found`);
       }
 
       const entity = diagrams[0];
-      const decodedData = this.decoder.decode(entity.storageValue);
+      const decodedData = await this.decodeEntityPayload(entity);
       const originalDiagram: DiagramData = JSON.parse(decodedData);
 
       // Create a new entry with updated title
@@ -1249,31 +1363,32 @@ export class ArkivService {
 
       const jsonData = JSON.stringify(renameData);
       const encodedData = this.encoder.encode(jsonData);
+      const attributes: Attribute[] = [
+        attr('type', 'rename'),
+        attr('originalDiagramId', diagramId),
+        attr('oldTitle', originalDiagram.title),
+        attr('newTitle', newTitle),
+        attr('timestamp', Date.now())
+      ];
 
-      const creates = [{
-        data: encodedData,
-        btl: 86400 * 100, // 100 days
-        stringAnnotations: [
-          new Annotation('type', 'rename'),
-          new Annotation('originalDiagramId', diagramId),
-          new Annotation('oldTitle', originalDiagram.title),
-          new Annotation('newTitle', newTitle),
-          ...(walletAddress ? [new Annotation('wallet', walletAddress)] : [])
-        ],
-        numericAnnotations: [
-          new Annotation('timestamp', Date.now())
-        ]
-      }];
+      if (walletAddress) {
+        attributes.push(attr('wallet', walletAddress));
+      }
 
-      const receipt = await client.createEntities(creates);
+      const createdKeys = await this.createEntities([{
+        payload: encodedData,
+        attributes,
+        expiresInSeconds: 86400 * 100,
+        contentType: 'application/json'
+      }]);
 
-      if (receipt) {
+      if (createdKeys.length > 0) {
         console.log(`✅ Diagram rename recorded: ${diagramId} -> "${newTitle}"`);
         return true;
-      } else {
-        console.log(`❌ Failed to record rename for diagram: ${diagramId}`);
-        return false;
       }
+
+      console.log(`❌ Failed to record rename for diagram: ${diagramId}`);
+      return false;
 
     } catch (error) {
       console.error('❌ Error renaming diagram:', error);
@@ -1289,8 +1404,8 @@ export class ArkivService {
         return false; // Indicates frontend should handle
       }
 
-      const client = this.writeClient;
-      console.log(`⏰ Changing BTL for diagram ${diagramId} to ${newBTLDays} days`);
+    this.ensureWriteClient();
+    console.log(`⏰ Changing BTL for diagram ${diagramId} to ${newBTLDays} days`);
 
       // Find the original diagram
       let queryParts = ['type = "diagram"', `id = "${diagramId}"`];
@@ -1298,16 +1413,16 @@ export class ArkivService {
         queryParts.push(`wallet = "${walletAddress}"`);
       }
 
-      const queryConditions = queryParts.join(' && ');
-      const diagrams = await client.queryEntities(queryConditions);
+    const queryConditions = queryParts.join(' && ');
+    const diagrams = await this.queryEntities(queryConditions);
 
       if (!diagrams || diagrams.length === 0) {
         throw new Error(`Diagram ${diagramId} not found`);
       }
 
-      const entity = diagrams[0];
-      const decodedData = this.decoder.decode(entity.storageValue);
-      const originalDiagram: DiagramData = JSON.parse(decodedData);
+    const entity = diagrams[0];
+    const decodedData = await this.decodeEntityPayload(entity);
+    const originalDiagram: DiagramData = JSON.parse(decodedData);
       const newBTLBlocks = Math.floor(newBTLDays * 24 * 60 * 60 / 2); // Convert days to blocks (2 sec/block)
 
       // Create a new entry with updated BTL
@@ -1324,31 +1439,33 @@ export class ArkivService {
       const jsonData = JSON.stringify(btlData);
       const encodedData = this.encoder.encode(jsonData);
 
-      const creates = [{
-        data: encodedData,
-        btl: newBTLBlocks, // Use the new BTL
-        stringAnnotations: [
-          new Annotation('type', 'btl_change'),
-          new Annotation('originalDiagramId', diagramId),
-          new Annotation('newBTLDays', newBTLDays.toString()),
-          ...(walletAddress ? [new Annotation('wallet', walletAddress)] : [])
-        ],
-        numericAnnotations: [
-          new Annotation('timestamp', Date.now()),
-          new Annotation('newBTLBlocks', newBTLBlocks),
-          new Annotation('oldBTLDays', 100) // Default was 100 days
-        ]
-      }];
+      const attributes: Attribute[] = [
+        attr('type', 'btl_change'),
+        attr('originalDiagramId', diagramId),
+        attr('newBTLDays', newBTLDays.toString()),
+        attr('timestamp', Date.now()),
+        attr('newBTLBlocks', newBTLBlocks),
+        attr('oldBTLDays', 100)
+      ];
 
-      const receipt = await client.createEntities(creates);
+      if (walletAddress) {
+        attributes.push(attr('wallet', walletAddress));
+      }
 
-      if (receipt) {
+      const createdKeys = await this.createEntities([{
+        payload: encodedData,
+        attributes,
+        expiresInSeconds: blocksToSeconds(newBTLBlocks),
+        contentType: 'application/json'
+      }]);
+
+      if (createdKeys.length > 0) {
         console.log(`✅ Diagram BTL change recorded: ${diagramId} -> ${newBTLDays} days`);
         return true;
-      } else {
-        console.log(`❌ Failed to record BTL change for diagram: ${diagramId}`);
-        return false;
       }
+
+      console.log(`❌ Failed to record BTL change for diagram: ${diagramId}`);
+      return false;
 
     } catch (error) {
       console.error('❌ Error changing diagram BTL:', error);
@@ -1364,8 +1481,8 @@ export class ArkivService {
         return false; // Indicates frontend should handle
       }
 
-      const client = this.writeClient;
-      console.log(`🛡️ Protecting diagram ${diagramId}`);
+    this.ensureWriteClient();
+    console.log(`🛡️ Protecting diagram ${diagramId}`);
 
       // Find the original diagram
       let queryParts = ['type = "diagram"', `id = "${diagramId}"`];
@@ -1374,14 +1491,14 @@ export class ArkivService {
       }
 
       const queryConditions = queryParts.join(' && ');
-      const diagrams = await client.queryEntities(queryConditions);
+      const diagrams = await this.queryEntities(queryConditions);
 
       if (!diagrams || diagrams.length === 0) {
         throw new Error(`Diagram ${diagramId} not found`);
       }
 
       const entity = diagrams[0];
-      const decodedData = this.decoder.decode(entity.storageValue);
+      const decodedData = await this.decodeEntityPayload(entity);
       const originalDiagram: DiagramData = JSON.parse(decodedData);
 
       // Encode/protect the content
@@ -1400,29 +1517,31 @@ export class ArkivService {
       const jsonData = JSON.stringify(protectionData);
       const encodedData = this.encoder.encode(jsonData);
 
-      const creates = [{
-        data: encodedData,
-        btl: 86400 * 100, // 100 days
-        stringAnnotations: [
-          new Annotation('type', 'protection'),
-          new Annotation('originalDiagramId', diagramId),
-          new Annotation('protected', '1'),
-          ...(walletAddress ? [new Annotation('wallet', walletAddress)] : [])
-        ],
-        numericAnnotations: [
-          new Annotation('timestamp', Date.now())
-        ]
-      }];
+      const attributes: Attribute[] = [
+        attr('type', 'protection'),
+        attr('originalDiagramId', diagramId),
+        attr('protected', '1'),
+        attr('timestamp', Date.now())
+      ];
 
-      const receipt = await client.createEntities(creates);
+      if (walletAddress) {
+        attributes.push(attr('wallet', walletAddress));
+      }
 
-      if (receipt) {
+      const createdKeys = await this.createEntities([{
+        payload: encodedData,
+        attributes,
+        expiresInSeconds: 86400 * 100,
+        contentType: 'application/json'
+      }]);
+
+      if (createdKeys.length > 0) {
         console.log(`✅ Diagram protection recorded: ${diagramId}`);
         return true;
-      } else {
-        console.log(`❌ Failed to record protection for diagram: ${diagramId}`);
-        return false;
       }
+
+      console.log(`❌ Failed to record protection for diagram: ${diagramId}`);
+      return false;
 
     } catch (error) {
       console.error('❌ Error protecting diagram:', error);
@@ -1462,39 +1581,40 @@ export class ArkivService {
 
       // Store share token in Arkiv
       const tokenValue = JSON.stringify(shareTokenData);
-      const tokenData = new TextEncoder().encode(tokenValue);
+      const tokenData = this.encoder.encode(tokenValue);
 
-      if (this.writeClient) {
-        // Calculate BTL blocks
-        const btlDays = shareTokenData.expiresAt ? Math.ceil((shareTokenData.expiresAt - Date.now()) / (1000 * 60 * 60 * 24)) : 365;
-        const btlBlocks = Math.floor(btlDays * 24 * 60 * 60 / 2);
-
-        const creates = [{
-          data: tokenData,
-          stringAnnotations: [
-            new Annotation('type', 'share_token'),
-            new Annotation('diagram_id', shareRequest.diagramId),
-            new Annotation('created_by', createdBy),
-            new Annotation('token', shareTokenData.token),
-            new Annotation('is_public', shareRequest.isPublic ? 'true' : 'false')
-          ],
-          numericAnnotations: [
-            new Annotation('created_at', shareTokenData.createdAt),
-            ...(shareTokenData.expiresAt ? [new Annotation('expires_at', shareTokenData.expiresAt)] : []),
-            new Annotation('access_count', 1) // Start with 1 instead of 0
-          ],
-          btl: btlBlocks
-        }];
-
-        const createReceipt = await this.writeClient.createEntities(creates);
-        if (!createReceipt || createReceipt.length === 0) {
-          throw new Error('Failed to create share token entity');
-        }
-
-        console.log(`Share token stored with entity key: ${createReceipt[0].entityKey}`);
-      } else {
+      if (!this.hasWriteAccess()) {
         throw new Error('Backend cannot create share tokens without signing key');
       }
+
+      const btlDays = shareTokenData.expiresAt ? Math.ceil((shareTokenData.expiresAt - Date.now()) / (1000 * 60 * 60 * 24)) : 365;
+      const btlBlocks = Math.max(1, Math.floor(btlDays * 24 * 60 * 60 / 2));
+      const attributes: Attribute[] = [
+        attr('type', 'share_token'),
+        attr('diagram_id', shareRequest.diagramId),
+        attr('created_by', createdBy),
+        attr('token', shareTokenData.token),
+        attr('is_public', shareRequest.isPublic ? 'true' : 'false'),
+        attr('created_at', shareTokenData.createdAt),
+        attr('access_count', 1)
+      ];
+
+      if (shareTokenData.expiresAt) {
+        attributes.push(attr('expires_at', shareTokenData.expiresAt));
+      }
+
+      const createdKeys = await this.createEntities([{
+        payload: tokenData,
+        attributes,
+        expiresInSeconds: blocksToSeconds(btlBlocks),
+        contentType: 'application/json'
+      }]);
+
+      if (!createdKeys.length) {
+        throw new Error('Failed to create share token entity');
+      }
+
+      console.log(`Share token stored with entity key: ${createdKeys[0]}`);
 
       // Generate share URL
       const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
@@ -1513,20 +1633,20 @@ export class ArkivService {
 
   async accessSharedDiagram(token: string): Promise<DiagramData | null> {
     try {
-      // Search for share token by token annotation
-      const queryClient = this.getQueryClient();
-      const query = `type == "share_token" && token == "${token}"`;
+  // Search for share token by token annotation
+  const query = `type == "share_token" && token == "${token}"`;
 
-      console.log(`Searching for share token: ${query}`);
-      const results = await queryClient.queryEntities(query);
+  console.log(`Searching for share token: ${query}`);
+  const results = await this.queryEntities(query);
 
       if (!results || results.length === 0) {
         console.log(`Share token ${token} not found`);
         return null;
       }
 
-      const tokenEntity = results[0];
-      const shareTokenData: ShareToken = JSON.parse(new TextDecoder().decode(tokenEntity.storageValue));
+  const tokenEntity = results[0];
+  const tokenPayload = await this.decodeEntityPayload(tokenEntity);
+  const shareTokenData: ShareToken = JSON.parse(tokenPayload);
 
       // Check if token is expired
       if (shareTokenData.expiresAt && Date.now() > shareTokenData.expiresAt) {
@@ -1542,34 +1662,36 @@ export class ArkivService {
       }
 
       // Increment access count (if we can write)
-      if (this.writeClient) {
+      if (this.hasWriteAccess()) {
         try {
           shareTokenData.accessCount++;
           const updatedTokenValue = JSON.stringify(shareTokenData);
-          const tokenData = new TextEncoder().encode(updatedTokenValue);
+          const tokenData = this.encoder.encode(updatedTokenValue);
 
           // Calculate remaining BTL
           const btlDays = shareTokenData.expiresAt ? Math.ceil((shareTokenData.expiresAt - Date.now()) / (1000 * 60 * 60 * 24)) : 365;
-          const btlBlocks = Math.floor(btlDays * 24 * 60 * 60 / 2);
+          const btlBlocks = Math.max(1, Math.floor(btlDays * 24 * 60 * 60 / 2));
 
-          const creates = [{
-            data: tokenData,
-            stringAnnotations: [
-              new Annotation('type', 'share_token'),
-              new Annotation('diagram_id', shareTokenData.diagramId),
-              new Annotation('created_by', shareTokenData.createdBy),
-              new Annotation('token', shareTokenData.token),
-              new Annotation('is_public', shareTokenData.isPublic ? 'true' : 'false')
-            ],
-            numericAnnotations: [
-              new Annotation('created_at', shareTokenData.createdAt),
-              ...(shareTokenData.expiresAt ? [new Annotation('expires_at', shareTokenData.expiresAt)] : []),
-              new Annotation('access_count', Math.max(1, shareTokenData.accessCount))
-            ],
-            btl: btlBlocks > 0 ? btlBlocks : 1
-          }];
+          const attributes: Attribute[] = [
+            attr('type', 'share_token'),
+            attr('diagram_id', shareTokenData.diagramId),
+            attr('created_by', shareTokenData.createdBy),
+            attr('token', shareTokenData.token),
+            attr('is_public', shareTokenData.isPublic ? 'true' : 'false'),
+            attr('created_at', shareTokenData.createdAt),
+            attr('access_count', Math.max(1, shareTokenData.accessCount))
+          ];
 
-          await this.writeClient.createEntities(creates);
+          if (shareTokenData.expiresAt) {
+            attributes.push(attr('expires_at', shareTokenData.expiresAt));
+          }
+
+          await this.createEntities([{
+            payload: tokenData,
+            attributes,
+            expiresInSeconds: blocksToSeconds(btlBlocks),
+            contentType: 'application/json'
+          }]);
         } catch (updateError) {
           console.warn('Failed to update access count:', updateError);
           // Continue anyway, access count update is not critical
@@ -1593,19 +1715,18 @@ export class ArkivService {
         throw new Error('Diagram not found or access denied');
       }
 
-      const queryClient = this.getQueryClient();
-
       // Search for share tokens for this diagram
       const createdBy = walletAddress || custodialId || 'anonymous';
       const query = `type == "share_token" && diagram_id == "${diagramId}" && created_by == "${createdBy}"`;
 
       console.log(`Searching for share tokens: ${query}`);
-      const results = await queryClient.queryEntities(query);
+      const results = await this.queryEntities(query);
 
       const shareTokens: ShareToken[] = [];
       for (const result of results) {
         try {
-          const tokenData: ShareToken = JSON.parse(new TextDecoder().decode(result.storageValue));
+          const payload = await this.decodeEntityPayload(result);
+          const tokenData: ShareToken = JSON.parse(payload);
 
           // Filter out expired tokens
           if (!tokenData.expiresAt || Date.now() <= tokenData.expiresAt) {
@@ -1625,19 +1746,19 @@ export class ArkivService {
 
   async revokeShareToken(token: string, walletAddress?: string, custodialId?: string): Promise<boolean> {
     try {
-      // Search for share token by token annotation
-      const queryClient = this.getQueryClient();
-      const query = `type == "share_token" && token == "${token}"`;
+  // Search for share token by token annotation
+  const query = `type == "share_token" && token == "${token}"`;
 
-      console.log(`Searching for share token to revoke: ${query}`);
-      const results = await queryClient.queryEntities(query);
+  console.log(`Searching for share token to revoke: ${query}`);
+  const results = await this.queryEntities(query);
 
       if (!results || results.length === 0) {
         console.log(`Share token ${token} not found`);
         return false;
       }
 
-      const shareTokenData: ShareToken = JSON.parse(new TextDecoder().decode(results[0].storageValue));
+  const payload = await this.decodeEntityPayload(results[0]);
+  const shareTokenData: ShareToken = JSON.parse(payload);
       const currentUser = walletAddress || custodialId || 'anonymous';
 
       // Check if user is authorized to revoke this token
@@ -1646,29 +1767,29 @@ export class ArkivService {
       }
 
       // Mark token as revoked by creating a revocation entity with very short TTL
-      if (this.writeClient) {
-        const revokedData = new TextEncoder().encode('REVOKED');
-        const creates = [{
-          data: revokedData,
-          stringAnnotations: [
-            new Annotation('type', 'share_token_revoked'),
-            new Annotation('diagram_id', shareTokenData.diagramId),
-            new Annotation('created_by', currentUser),
-            new Annotation('token', token),
-            new Annotation('revoked_at', Date.now().toString())
-          ],
-          numericAnnotations: [
-            new Annotation('timestamp', Date.now())
-          ],
-          btl: 1 // Very short TTL to effectively delete
-        }];
-
-        await this.writeClient.createEntities(creates);
-        console.log(`Share token ${token} marked as revoked`);
-        return true;
-      } else {
+      if (!this.hasWriteAccess()) {
         throw new Error('Backend cannot revoke share tokens without signing key');
       }
+
+      const revokedData = this.encoder.encode('REVOKED');
+      const attributes: Attribute[] = [
+        attr('type', 'share_token_revoked'),
+        attr('diagram_id', shareTokenData.diagramId),
+        attr('created_by', currentUser),
+        attr('token', token),
+        attr('revoked_at', Date.now().toString()),
+        attr('timestamp', Date.now())
+      ];
+
+      await this.createEntities([{
+        payload: revokedData,
+        attributes,
+        expiresInSeconds: blocksToSeconds(1),
+        contentType: 'text/plain'
+      }]);
+
+      console.log(`Share token ${token} marked as revoked`);
+      return true;
     } catch (error) {
       console.error('Revoke share token failed:', error);
       return false;
@@ -1679,28 +1800,33 @@ export class ArkivService {
     try {
       console.log(`Saving user config for wallet: ${config.walletAddress}`);
 
-      const client = this.ensureWriteClient();
+      this.ensureWriteClient();
 
       const configJson = JSON.stringify(config);
       const encodedData = this.encoder.encode(configJson);
 
-      const creates = [{
-        data: encodedData,
-        btl: Math.floor(365 * 24 * 60 * 60 / 2), // ~365 dni dla konfiguracji (2 sekundy/blok)
-        stringAnnotations: [
-          new Annotation('type', 'user_config'),
-          new Annotation('wallet', config.walletAddress)
-        ],
-        numericAnnotations: [
-          new Annotation('timestamp', config.timestamp),
-          new Annotation('btl_days', config.btlDays)
-        ]
-      }];
+      const attributes: Attribute[] = [
+        attr('type', 'user_config'),
+        attr('wallet', config.walletAddress),
+        attr('timestamp', config.timestamp),
+        attr('btl_days', config.btlDays)
+      ];
 
-      const createReceipt = await client.createEntities(creates);
-      console.log(`User config saved with entity key: ${createReceipt[0].entityKey}`);
+      const expiresInSeconds = blocksToSeconds(Math.floor(365 * 24 * 60 * 60 / 2));
+      const createdKeys = await this.createEntities([{
+        payload: encodedData,
+        attributes,
+        expiresInSeconds,
+        contentType: 'application/json'
+      }]);
 
-      return createReceipt[0].entityKey;
+      if (!createdKeys.length) {
+        throw new Error('Failed to store user configuration');
+      }
+
+      console.log(`User config saved with entity key: ${createdKeys[0]}`);
+
+      return createdKeys[0];
     } catch (error) {
       console.error('Error saving user config:', error);
       throw new Error(`Config save failed: ${(error as Error).message}`);
@@ -1712,8 +1838,7 @@ export class ArkivService {
       const query = `type = "user_config" && wallet = "${walletAddress}"`;
       console.log(`Getting user config query: ${query}`);
 
-      const client = this.getQueryClient();
-      const queryResult = await client.queryEntities(query);
+      const queryResult = await this.queryEntities(query);
       console.log(`Config query result: ${queryResult?.length || 0} entities found`);
 
       if (queryResult && queryResult.length > 0) {
@@ -1721,7 +1846,7 @@ export class ArkivService {
         const entity = queryResult[queryResult.length - 1];
 
         try {
-          const decodedData = this.decoder.decode(entity.storageValue);
+          const decodedData = await this.decodeEntityPayload(entity);
           const config: UserConfig = JSON.parse(decodedData);
           console.log(`User config loaded:`, config);
           return config;
@@ -1798,7 +1923,7 @@ export class ArkivService {
     try {
       console.log(`Starting chunk export for chunk: ${chunkRequest.chunkId}, diagram: ${chunkRequest.diagramId}`);
 
-      const client = this.ensureWriteClient();
+  this.ensureWriteClient();
 
       // Get user configuration for BTL
       let btlBlocks = 4320000; // default ~100 days
@@ -1828,35 +1953,37 @@ export class ArkivService {
       const chunkJson = JSON.stringify(chunkData);
       const encodedData = this.encoder.encode(chunkJson);
 
-      const creates = [{
-        data: encodedData,
-        btl: btlBlocks,
-        stringAnnotations: [
-          new Annotation('type', 'diagram_chunk'),
-          new Annotation('chunk_id', chunkRequest.chunkId),
-          new Annotation('diagram_id', chunkRequest.diagramId),
-          new Annotation('title', chunkRequest.title),
-          new Annotation('author', chunkRequest.author),
-          ...(walletAddress ? [new Annotation('wallet', walletAddress)] : [])
-        ],
-        numericAnnotations: [
-          new Annotation('chunk_index', chunkRequest.chunkIndex),
-          new Annotation('total_chunks', chunkRequest.totalChunks),
-          new Annotation('timestamp', Date.now())
-        ]
-      }];
+      const attributes: Attribute[] = [
+        attr('type', 'diagram_chunk'),
+        attr('chunk_id', chunkRequest.chunkId),
+        attr('diagram_id', chunkRequest.diagramId),
+        attr('title', chunkRequest.title),
+        attr('author', chunkRequest.author),
+        attr('chunk_index', chunkRequest.chunkIndex),
+        attr('total_chunks', chunkRequest.totalChunks),
+        attr('timestamp', Date.now())
+      ];
+
+      if (walletAddress) {
+        attributes.push(attr('wallet', walletAddress));
+      }
 
       console.log(`Creating chunk entity in Arkiv: ${chunkRequest.chunkIndex + 1}/${chunkRequest.totalChunks}`);
 
-      const createReceipt = await client.createEntities(creates);
+      const createdKeys = await this.createEntities([{
+        payload: encodedData,
+        attributes,
+        expiresInSeconds: blocksToSeconds(btlBlocks),
+        contentType: 'application/json'
+      }]);
 
-      if (createReceipt && createReceipt.length > 0) {
-        const entityKey = createReceipt[0].entityKey;
-        console.log(`✅ Chunk ${chunkRequest.chunkIndex + 1}/${chunkRequest.totalChunks} exported successfully with entity key: ${entityKey}`);
-        return entityKey;
-      } else {
+      if (!createdKeys.length) {
         throw new Error('Failed to create chunk entity in Arkiv - no receipt returned');
       }
+
+      const entityKey = createdKeys[0];
+      console.log(`✅ Chunk ${chunkRequest.chunkIndex + 1}/${chunkRequest.totalChunks} exported successfully with entity key: ${entityKey}`);
+      return entityKey;
     } catch (error) {
       console.error('💥 Error exporting chunk to Arkiv:', error);
       throw new Error(`Chunk export failed: ${(error as Error).message}`);
@@ -1868,10 +1995,9 @@ export class ArkivService {
       console.log(`🧩 Starting sharded diagram import for ID: ${diagramId}`);
 
       // Find all chunks for this diagram
-      const query = `type = "diagram_chunk" && diagram_id = "${diagramId}"`;
-      console.log(`Executing chunk query: ${query}`);
-      const client = this.getQueryClient();
-      const queryResult = await client.queryEntities(query);
+  const query = `type = "diagram_chunk" && diagram_id = "${diagramId}"`;
+  console.log(`Executing chunk query: ${query}`);
+  const queryResult = await this.queryEntities(query);
 
       console.log(`Found ${queryResult?.length || 0} chunks for diagram ${diagramId}`);
 
@@ -1883,7 +2009,7 @@ export class ArkivService {
         try {
           // Look for any reference to this diagram ID in chunk metadata or other entities
           const evidenceQuery = `diagram_id = "${diagramId}"`;
-          const evidenceResult = await client.queryEntities(evidenceQuery);
+          const evidenceResult = await this.queryEntities(evidenceQuery);
 
           if (evidenceResult && evidenceResult.length > 0) {
             console.log(`⏰ Found evidence of sharded diagram ${diagramId} but chunks not accessible`);
@@ -1903,7 +2029,7 @@ export class ArkivService {
       const chunks: ChunkData[] = [];
       for (const entity of queryResult) {
         try {
-          const decodedData = this.decoder.decode(entity.storageValue);
+          const decodedData = await this.decodeEntityPayload(entity);
           const chunkData: ChunkData = JSON.parse(decodedData);
           chunks.push(chunkData);
         } catch (error) {
@@ -2011,14 +2137,12 @@ export class ArkivService {
     try {
       console.log(`Getting versions for diagram: ${diagramId}`);
 
-      const client = this.getQueryClient();
-
       // Query for all diagrams with the same base ID (different versions have same ID but different entity keys)
       // First try to find by exact ID match
       const query = `type = "diagram" && id = "${diagramId}"`;
       console.log(`Executing versions query: ${query}`);
 
-      const queryResult = await client.queryEntities(query);
+      const queryResult = await this.queryEntities(query);
       console.log(`Found ${queryResult.length} potential versions`);
 
       const versions: DiagramMetadata[] = [];
@@ -2026,9 +2150,8 @@ export class ArkivService {
       for (const entity of queryResult) {
         try {
           // Decode the entity data to get metadata
-          const entityData = new Uint8Array(entity.storageValue);
-          const jsonStr = this.decoder.decode(entityData);
-          const diagram: DiagramData = JSON.parse(jsonStr);
+          const decodedPayload = await this.decodeEntityPayload(entity);
+          const diagram: DiagramData = JSON.parse(decodedPayload);
 
           // Only include if user has access (same author or shared)
           if (this.userService.hasAccessToDiagram(diagram, walletAddress, custodialId)) {
@@ -2038,11 +2161,11 @@ export class ArkivService {
               author: diagram.author,
               timestamp: diagram.timestamp,
               version: diagram.version || 1,
-              entityKey: entity.entityKey
+              entityKey: entity.key
             });
           }
         } catch (decodeError) {
-          console.log(`Could not decode entity ${entity.entityKey}:`, decodeError);
+          console.log(`Could not decode entity ${entity.key}:`, decodeError);
           continue;
         }
       }
