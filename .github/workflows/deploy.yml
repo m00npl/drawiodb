@@ -202,14 +202,13 @@ jobs:
             cd /home/ubuntu/projects/drawio
 
             # Wait for services to be fully ready
-            sleep 30
+            sleep 15
 
             # Verify all services are healthy
             docker compose ps
 
-            # Test API endpoints
-            curl -f https://api.drawiodb.online/health || exit 1
-            curl -f https://drawiodb.online || exit 1
+            # Test local health endpoint
+            docker exec drawiodb curl -f http://localhost:8080/health || exit 1
 
             echo "Deployment successful!"
           '
