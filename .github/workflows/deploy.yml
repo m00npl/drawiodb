@@ -185,20 +185,9 @@ jobs:
             docker compose up -d --no-deps drawiodb
             sleep 30
 
-            # Verify backend health
-            if ! docker exec drawiodb curl -f http://localhost:3000/health; then
-              echo "Backend health check failed, rolling back"
-              docker compose up -d --no-deps drawiodb
-              exit 1
-            fi
-
-            # Update frontend
-            docker compose up -d --no-deps drawiodb
-            sleep 15
-
-            # Verify frontend health
-            if ! docker exec drawiodb curl -f http://localhost:8080; then
-              echo "Frontend health check failed, rolling back"
+            # Verify service health
+            if ! docker exec drawiodb curl -f http://localhost:8080/health; then
+              echo "Service health check failed, rolling back"
               docker compose up -d --no-deps drawiodb
               exit 1
             fi
@@ -246,11 +235,3 @@ jobs:
           path: tests/test-reports/
           retention-days: 30
 
-      - name: Notify deployment status
-        if: always()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          channel: '#deployments'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-          fields: repo,message,commit,author,action,eventName,ref,workflow
